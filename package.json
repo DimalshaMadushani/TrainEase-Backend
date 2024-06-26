@@ -1,0 +1,21 @@
+{
+  "name": "trainease-backend",
+  "version": "1.0.0",
+  "description": "RailEase offers seamless and efficient booking services, providing travelers with easy access to train schedules, seat reservations, and ticket purchases with just a few clicks",
+  "main": "index.js",
+  "type":"module",
+  "scripts": {
+    "dev": "nodemon ./index.js",
+    "start": "node ./index.js"
+  },
+
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.4.4"
+  }
+}
