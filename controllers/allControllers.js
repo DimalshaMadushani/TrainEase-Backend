@@ -1,0 +1,499 @@
+import Schedule from "../models/schedule.model.js";
+import Stop from "../models/stop.model.js";
+import Train from "../models/train.model.js";
+import BookedSeat from "../models/BookedSeat.model.js";
+import Booking from "../models/booking.model.js";
+import User from "../models/user.model.js";
+import Station from "../models/station.model.js";
+import Coach from "../models/coach.model.js";
+import CoachType from "../models/coachType.model.js";
+import Seat from "../models/seat.model.js";
+import ExpressError from "../utils/ExpressError.js";
+import PassengerDetail from "../models/passengerDetail.model.js";
+
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
+// import nodemailer from "nodemailer";
+// import { PDFDocument, rgb } from "pdf-lib";
+
+export const getSchedules = async (req, res, next) => {
+  // get the fromName, toName and date that user has entered in the search bar
+  const { fromName, toName, date } = req.query;
+
+  // Find the station with the given fromName
+  const fromStation = await Station.findOne({ name: fromName });
+  // Find the station with the given toName
+  const toStation = await Station.findOne({ name: toName });
+
+  // If the fromStation or toStation is not found, throw an error
+  if (!fromStation || !toStation) {
+    throw new ExpressError("Invalid Station Name", 400);
+  }
+
+  // Find all schedules that run on the given date
+  // populate only the name field of the trainRef field
+  const dateSchedules = await Schedule.find({ [date]: true })
+    .populate("trainRef", "name")
+    .select("-monday -tuesday -wednesday -thursday -friday -saturday -sunday"); // Select all fields except the days of the week
+
+  const finalSchedules = [];
+  // from all the schedules, filter out the schedules that have the fromStation before the toStation
+  for (let schedule of dateSchedules) {
+    // from all schedules filter the schedules that have both fromStation and toStation as stops
+    const fromStop = await Stop.findOne({
+      stationRef: fromStation._id,
+      scheduleRef: schedule._id,
+    });
+    const toStop = await Stop.findOne({
+      stationRef: toStation._id,
+      scheduleRef: schedule._id,
+    });
+
+    // if the fromStop is before the toStop, add the schedule to the finalSchedules array
+    if (fromStop && toStop && fromStop.stopNumber < toStop.stopNumber) {
+      finalSchedules.push({ schedule, fromStop, toStop });
+    }
+  }
+  return res.status(200).json(finalSchedules); // Send the finalSchedules array as the response
+};
+
+export const getTrainDetails = async (req, res, next) => {
+  const { scheduleId, trainId, fromStop, toStop } = req.body;
+  const fromStationName = await Station.findById(fromStop.stationRef).select(
+    "name"
+  ); // Find the fromStation and select only the name field
+  const toStationName = await Station.findById(toStop.stationRef).select(
+    "name"
+  ); // Find the toStation and select only the name field
+  const trainDetails = await Train.findById(trainId).populate({
+    path: "coaches",
+    select: "coachTypeRef",
+    populate: {
+      path: "coachTypeRef",
+      select: "name",
+    },
+  });
+  let firstClassAvailable = false;
+  let secondClassAvailable = false;
+  let thirdClassAvailable = false;
+  for (let coach of trainDetails.coaches) {
+    if (coach.coachTypeRef.name === "First Class") {
+      firstClassAvailable = true;
+    } else if (coach.coachTypeRef.name === "Second Class") {
+      secondClassAvailable = true;
+    } else {
+      thirdClassAvailable = true;
+    }
+  }
+  const priceFactors = await CoachType.find();
+  const journeyPrice = toStop.price - fromStop.price;
+  return res.status(200).json({
+    scheduleId,
+    train: {
+      id: trainDetails._id,
+      name: trainDetails.name,
+      firstClassAvailable,
+      secondClassAvailable,
+      thirdClassAvailable,
+    },
+    fromStation: {
+      id: fromStationName._id,
+      name: fromStationName.name,
+      // arrivalTime: fromStop.arrivalTime,
+      departureTime: fromStop.departureTime,
+      platForm: fromStop.platform,
+      stopNumber: fromStop.stopNumber,
+    },
+    toStation: {
+      id: toStationName._id,
+      name: toStationName.name,
+      arrivalTime: toStop.arrivalTime,
+      // departureTime: toStop.departureTime,
+    },
+    journeyPrice,
+    priceFactors,
+  });
+  // return res.status(200).json(trainDetails);
+};
+
+// get the details of the coaches of the requested class of the train
+export const getCoachDetails = async (req, res, next) => {
+  const {
+    trainId,
+    requestedCoachType,
+    date,
+    fromStop,
+    toStop,
+    scheduleId,
+    journeyPrice,
+    priceFactor,
+  } = req.body;
+
+  // get the train with the given trainId
+  // populate the coaches field and the coachTypeRef field of each coach
+  const train = await Train.findById(trainId)
+    .populate({
+      path: "coaches",
+      populate: [
+        {
+          path: "coachTypeRef",
+          select: "name",
+        },
+        {
+          path: "seats",
+        },
+      ],
+    })
+    .lean(); // Use lean() to get plain JavaScript objects instead of Mongoose documents
+
+  // from all the coaches in the train, filter out the coaches that have the requested coach type
+  const requestedClassCoaches = [];
+  train.coaches.forEach((coach) => {
+    if (coach.coachTypeRef.name === requestedCoachType) {
+      requestedClassCoaches.push(coach);
+    }
+  });
+
+  // get all the bookings of that schedule on that date
+  const AllbookingsOnDate = await Booking.find({
+    scheduleRef: scheduleId,
+    date: {
+      $gte: new Date(date),
+      $lt: new Date(date).setDate(new Date(date).getDate() + 1),
+    },
+    status: { $ne: "cancelled" }, // exclude the cancelled bookings. that means only confirmed and hold bookings are considered
+  }).populate("from to seats");
+
+  // filter out the bookings that have a to stop number greater than the from stop number.
+  // that is, the bookings that are relevant to the journey from the from stop to the to stop
+  let relevantBookingsOnDate = [];
+  AllbookingsOnDate.forEach((booking) => {
+    if (
+      !(
+        (fromStop.stopNumber < booking.from.stopNumber &&
+          toStop.stopNumber < booking.from.stopNumber) ||
+        (fromStop.stopNumber > booking.to.stopNumber &&
+          toStop.stopNumber > booking.to.stopNumber)
+      )
+    ) {
+      relevantBookingsOnDate.push(booking);
+    }
+  });
+  // from all the relevant bookings, get all the booked seats
+  const relevantBookedSeats = relevantBookingsOnDate
+    .map((booking) => booking.seats)
+    .flat();
+
+  // for each coach, filter out the booked seats that belong to that coach
+  for (let i = 0; i < requestedClassCoaches.length; i++) {
+    const allSeatsofCurrCoach = requestedClassCoaches[i].seats.map((seat) =>
+      seat._id.toString()
+    );
+    const bookedSeatsofCurrCoach = relevantBookedSeats.filter((seat) =>
+      allSeatsofCurrCoach.includes(seat._id.toString())
+    );
+    // add the booked seats to the coach object
+    requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach;
+  }
+
+  res.status(200).json({ requestedClassCoaches, journeyPrice, priceFactor });
+};
+
+// hold the selected seats for the user until the holdExpiry time
+export const holdSeats = async (req, res, next) => {
+  const {
+    userId,
+    scheduleId,
+    fromStopId,
+    toStopId,
+    selectedSeatIds,
+    date,
+    priceFactor,
+    journeyPrice,
+    pax,
+  } = req.body;
+  const holdExpiry = new Date(Date.now() + 12 * 60 * 1000); // 12 minutes from now
+  const booking = new Booking({
+    userRef: userId,
+    scheduleRef: scheduleId,
+    date,
+    from: fromStopId,
+    to: toStopId,
+    totalAmount: journeyPrice * priceFactor * pax,
+    status: "hold",
+    seats: selectedSeatIds,
+    holdExpiry, // store the expiry time of the hold
+  });
+  await booking.save();
+  for (let seatId of selectedSeatIds) {
+    const bookedSeat = new BookedSeat({
+      bookingRef: booking._id,
+      seatRef: seatId,
+      amount: journeyPrice * priceFactor,
+    });
+    await bookedSeat.save();
+    booking.seats.push(seatId);
+  }
+  return res
+    .status(200)
+    .json({ bookingId: booking._id, expireTime: holdExpiry });
+};
+
+export const savePassengerDetails = async (req, res, next) => {
+  const { bookingId, passengers } = req.body;
+  for (let passenger of passengers) {
+    const { name, age, gender } = passenger;
+    const passengerDetail = new PassengerDetail({
+      bookingRef: bookingId,
+      name,
+      age,
+      gender,
+    });
+    await passengerDetail.save();
+  }
+  return res.status(200).json({ message: "Passengers' details saved" });
+};
+
+export const confirmBooking = async (req, res, next) => {
+  const { bookingId, userId } = req.body;
+  const booking = await Booking.findById(bookingId)
+    .populate({
+      path: "seats",
+      select: "name", // Only select the name field
+    })
+    .populate({
+      path: "userRef",
+      select: "email firstName lastName",
+    })
+    .populate({
+      path: "from",
+      select: "stationRef platform arrivalTime departureTime",
+      populate: {
+        path: "stationRef",
+      },
+    })
+    .populate({
+      path: "to",
+      select: "stationRef arrivalTime",
+      populate: {
+        path: "stationRef",
+      },
+    });
+
+  booking.status = "confirmed";
+  booking.holdExpiry = undefined;
+  await booking.save();
+
+  // Find the user by ID
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+//   // Generate PDFs for each seat
+//   const pdfBuffers = await generateETickets(booking);
+
+//   // Send email to the user with e-tickets
+//   await sendConfirmationEmail(user.email, pdfBuffers);
+
+  return res.status(200).json({ message: "Booking confirmed" });
+};
+
+
+// const generateETickets = async (booking) => {
+//   const pdfBuffers = [];
+
+//   for (const seat of booking.seats) {
+//     const pdfDoc = await PDFDocument.create();
+//     const page = pdfDoc.addPage([600, 300]);
+//     const { width, height } = page.getSize();
+//     const fontSize = 20;
+
+//     page.drawText(`Booking ID: ${booking._id}`, {
+//       x: 50,
+//       y: height - 4 * fontSize,
+//       size: fontSize,
+//     });
+
+//     page.drawText(
+//       `User: ${booking.userRef.firstName} ${booking.userRef.lastName}`,
+//       {
+//         x: 50,
+//         y: height - 6 * fontSize,
+//         size: fontSize,
+//       }
+//     );
+
+//     page.drawText(`Seat: ${seat.name}`, {
+//       x: 50,
+//       y: height - 8 * fontSize,
+//       size: fontSize,
+//     });
+
+//     page.drawText(`From: ${booking.from.stationRef.name}`, {
+//       x: 50,
+//       y: height - 10 * fontSize,
+//       size: fontSize,
+//     });
+
+//     page.drawText(`To: ${booking.to.stationRef.name}`, {
+//       x: 50,
+//       y: height - 12 * fontSize,
+//       size: fontSize,
+//     });
+
+//     page.drawText(`Date: ${booking.date}`, {
+//       x: 50,
+//       y: height - 14 * fontSize,
+//       size: fontSize,
+//     });
+
+//     page.drawText(`Amount: ${seat.amount}`, {
+//       x: 50,
+//       y: height - 16 * fontSize,
+//       size: fontSize,
+//     });
+
+//     const pdfBytes = await pdfDoc.save();
+//     pdfBuffers.push(pdfBytes);
+//   }
+
+//   return pdfBuffers;
+// };
+
+
+// const sendConfirmationEmail = async (userEmail, pdfBuffers) => {
+//   // Create a transporter
+//   let transporter = nodemailer.createTransport({
+//     service: "gmail", // or another email service
+//     auth: {
+//       user: process.env.EMAIL,
+//       pass: process.env.EMAIL_PASSWORD,
+//     },
+//   });
+
+//   // Email content
+//   let mailOptions = {
+//     from: process.env.EMAIL,
+//     to: userEmail,
+//     subject: "Booking Confirmation",
+//     text: "Your booking has been confirmed. Please find your e-tickets attached.",
+//     attachments: pdfBuffers.map((buffer, index) => ({
+//       filename: `e-ticket-${index + 1}.pdf`,
+//       content: buffer,
+//       contentType: "application/pdf",
+//     })),
+//   };
+
+//   // Send the email
+//   await transporter.sendMail(mailOptions);
+// };
+
+export const cancelBooking = async (req, res, next) => {
+  const { bookingId } = req.body;
+  const booking = await Booking.findById(bookingId);
+  if (booking.date - Date.now() <= 0) {
+    throw new ExpressError("Cannot cancel past bookings", 400);
+  }
+  booking.status = "cancelled";
+  booking.holdExpiry = undefined;
+  await booking.save();
+  return res.status(200).json({ message: "Booking cancelled" });
+};
+
+export async function releaseExpiredHolds() {
+  const now = new Date();
+  const bookings = await Booking.find({
+    status: "hold",
+    holdExpiry: { $lt: now },
+  });
+  for (let booking of bookings) {
+    booking.status = "cancelled";
+    await booking.save();
+  }
+}
+
+export const register = async (req, res, next) => {
+  const { username, firstName, lastName, email, phone, password, gender } =
+    req.body;
+  const hashedPassword = await bcryptjs.hash(password, 12);
+  try {
+    const newUser = new User({
+      username,
+      firstName,
+      lastName,
+      email,
+      phone,
+      password: hashedPassword,
+      gender,
+    });
+    await newUser.save();
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+    const { password: hashed, ...restOfUser } = newUser._doc;
+    res
+      .cookie("access_token", token, { httpOnly: true })
+      .status(200)
+      .json(restOfUser);
+  } catch (error) {
+    if (error.keyValue.email) {
+      return res.status(400).json({ message: "Email already exists" });
+    } else if (error.keyValue.username) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+    next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(400).json({ message: "Invalid email or password" });
+  }
+  const isMatch = await bcryptjs.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(400).json({ message: "Invalid email or password" });
+  }
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  const { password: hashed, ...restOfUser } = user._doc;
+  res
+    .cookie("access_token", token, { httpOnly: true })
+    .status(200)
+    .json(restOfUser);
+};
+
+export const logout = async (req, res, next) => {
+  res.clearCookie("access_token").json({ message: "Logged out" });
+};
+
+export const getProfile = async (req, res, next) => {
+  const user = await User.findById(req.user.id).select("-password");
+  res.status(200).json(user);
+};
+
+export const getBookingHistory = async (req, res, next) => {
+  const bookings = await Booking.find({ userRef: req.params.id })
+    .populate({
+      path: "scheduleRef",
+      select: "trainRef",
+      populate: {
+        path: "trainRef",
+        select: "name",
+      },
+    })
+    .populate({
+      path: "from",
+      populate: {
+        path: "stationRef",
+      },
+    })
+    .populate({
+      path: "to",
+      populate: {
+        path: "stationRef",
+      },
+    })
+    .sort({ date: -1 });
+
+  res.status(200).json(bookings);
+};
