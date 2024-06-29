@@ -30,9 +30,29 @@ export const getSchedules = async (req, res, next) => {
     throw new ExpressError("Invalid Station Name", 400);
   }
 
+  // Create a Date object
+  const dateObj = new Date(date);
+
+  // Get the day of the week as a number (0-6)
+  const dayOfWeekNumber = dateObj.getDay();
+
+  // Array of day names
+  const daysOfWeek = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+
+  // Get the day name
+  const dayName = daysOfWeek[dayOfWeekNumber];
+  // console.log(dayName);
   // Find all schedules that run on the given date
   // populate only the name field of the trainRef field
-  const dateSchedules = await Schedule.find({ [date]: true })
+  const dateSchedules = await Schedule.find({ [dayName]: true })
     .populate("trainRef", "name")
     .select("-monday -tuesday -wednesday -thursday -friday -saturday -sunday"); // Select all fields except the days of the week
 
@@ -59,12 +79,8 @@ export const getSchedules = async (req, res, next) => {
 
 export const getTrainDetails = async (req, res, next) => {
   const { scheduleId, trainId, fromStop, toStop } = req.body;
-  const fromStationName = await Station.findById(fromStop.stationRef).select(
-    "name"
-  ); // Find the fromStation and select only the name field
-  const toStationName = await Station.findById(toStop.stationRef).select(
-    "name"
-  ); // Find the toStation and select only the name field
+  const fromStationName = await Station.findById(fromStop.stationRef) // Find the fromStation and select only the name field
+  const toStationName = await Station.findById(toStop.stationRef)// Find the toStation and select only the name field
   const trainDetails = await Train.findById(trainId).populate({
     path: "coaches",
     select: "coachTypeRef",
@@ -145,6 +161,7 @@ export const getCoachDetails = async (req, res, next) => {
       ],
     })
     .lean(); // Use lean() to get plain JavaScript objects instead of Mongoose documents
+    console.log(train);
 
   // from all the coaches in the train, filter out the coaches that have the requested coach type
   const requestedClassCoaches = [];
@@ -196,7 +213,7 @@ export const getCoachDetails = async (req, res, next) => {
     requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach;
   }
 
-  res.status(200).json({ requestedClassCoaches, journeyPrice, priceFactor });
+  res.status(200).json({ requestedClassCoaches, journeyPrice, priceFactor,fromStop,toStop });
 };
 
 // hold the selected seats for the user until the holdExpiry time

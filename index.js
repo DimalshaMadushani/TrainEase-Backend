@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import express from "express";
 import allRoutes from "./routes/allRoutes.js";
 import { releaseExpiredHolds } from "./controllers/allControllers.js";
+import cors from "cors";
 const app = express();
 
 const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
@@ -15,6 +16,7 @@ mongoose
     console.error("Error connecting to MongoDB", err);
   });
 
+app.use(cors());
 app.use(express.json());
 
 app.use("/api", allRoutes);
