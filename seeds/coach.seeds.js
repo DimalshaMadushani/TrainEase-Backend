@@ -1,21 +1,12 @@
-import mongoose from "mongoose";
+
 import Coach from "../models/coach.model.js";
 import CoachType from "../models/coachType.model.js";
 import Seat from "../models/seat.model.js";
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
 
-// Connect to MongoDB
-mongoose
-  .connect(dbUrl)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.error("Error connecting to MongoDB", err);
-  });
 
-async function populateCoaches() {
+async function createCoaches() {
+  try {
   // Find all coach types
   const coachTypes = await CoachType.find();
   const seatsArr = await Seat.find();
@@ -41,9 +32,13 @@ async function populateCoaches() {
     { coachNumber: 1, coachTypeRef: secondClassType._id, seats: seatsArr.slice(160, 180).map(seat => seat._id) },
     { coachNumber: 2, coachTypeRef: thirdClassType._id, seats: seatsArr.slice(180, 200).map(seat => seat._id) },
   ]);
-
-  // Close the connection
-  await mongoose.connection.close();
+  console.log("Coaches successfully populated");
+  } catch (error) {
+    console.error("Error populating coaches:", error);
+  }
+  
 }
 
-populateCoaches().catch((err) => console.error(err));
+
+
+export default createCoaches;

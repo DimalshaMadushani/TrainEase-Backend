@@ -1,16 +1,7 @@
-import mongoose from "mongoose";
+
 import Station from "../models/station.model.js";
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
 
-// Connect to MongoDB
-mongoose.connect(dbUrl)
-.then(() => {
-    console.log('Connected to MongoDB');
-})
-.catch(err => {
-    console.error('Error connecting to MongoDB', err);
-});
 
 // List of Sri Lanka station names
 const stationNames = [
@@ -100,13 +91,10 @@ const createStations = async () => {
 
     // Insert station data into the database
     await Station.insertMany(stations);
-
     console.log("Stations successfully populated");
   } catch (error) {
     console.error("Error populating stations:", error);
-  } finally {
-    mongoose.connection.close();
-  }
+  } 
 };
 
-createStations();
+export default createStations;

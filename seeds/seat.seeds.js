@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+
 import Seat from "../models/seat.model.js";
 
 const firstSecondSeats = [
@@ -50,17 +50,7 @@ const thirdSeats = [
   { id: "4E", x: 220, y: 160 },
 ];
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
 
-// Connect to MongoDB
-mongoose
-  .connect(dbUrl)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.error("Error connecting to MongoDB", err);
-  });
 
 const createSeats = async () => {
   try {
@@ -83,9 +73,7 @@ const createSeats = async () => {
     console.log("Seats successfully populated");
   } catch (error) {
     console.error("Error populating seats:", error);
-  } finally {
-    mongoose.connection.close();
-  }
+  } 
 };
 
-createSeats();
+export default createSeats;

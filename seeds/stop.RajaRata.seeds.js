@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+
 import Stop from "../models/stop.model.js";
 import Station from "../models/station.model.js";
 import Schedule from "../models/schedule.model.js";
@@ -32,7 +32,8 @@ const stationsData = [
   { name: "Anuradhapura", arrival: "03:30 pm", departure: "03:30 pm" },
 ];
 
-const seedStops = async () => {
+const seedRajarataRajina = async () => {
+  try{
   const train = await Train.findOne({ name: "Rajarata Rajina" }); // Replace with your train name
   const relevantSchedules = await Schedule.find({ trainRef: train._id })
   const schedule = relevantSchedules[0]; // Replace with the correct schedule index
@@ -59,14 +60,11 @@ const seedStops = async () => {
     price += Math.floor(Math.random() * (50 - 10 + 1)) + 10;
     await stop.save();
   }
-  console.log("Seeding complete!");
-};
+  console.log("Rajarata Rajina stops Seeding complete!");
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
+}catch(error){
+  console.error("Error seeding stops:", error);
+}
+}
 
-// Connect to MongoDB
-mongoose
-  .connect(dbUrl)
-  .then(() => seedStops())
-  .catch((err) => console.error(err))
-  .finally(() => mongoose.disconnect());
+export default seedRajarataRajina;

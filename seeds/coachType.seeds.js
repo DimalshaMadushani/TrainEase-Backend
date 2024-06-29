@@ -1,17 +1,7 @@
-import mongoose from "mongoose";
+
 import coachType from "../models/coachType.model.js";
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
 
-// Connect to MongoDB
-mongoose
-  .connect(dbUrl)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.error("Error connecting to MongoDB", err);
-  });
 
 const coachTypes = [
   { name: "First Class", priceFactor: 4 },
@@ -27,16 +17,12 @@ const createCoachTypes = async () => {
       console.log("CoachTypes already populated");
       return;
     }
-
     // Create coachType instances
     await coachType.insertMany(coachTypes);
-
     console.log("CoachTypes successfully populated");
   } catch (error) {
     console.error("Error populating coachTypes:", error);
-  } finally {
-    mongoose.connection.close();
-  }
+  } 
 };
 
-createCoachTypes();
+export default createCoachTypes;

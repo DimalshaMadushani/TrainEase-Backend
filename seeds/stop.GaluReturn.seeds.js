@@ -44,7 +44,9 @@ const stationsData = [
 ];
 
 
-const seedStops = async () => {
+const seedGaluKumariReturn = async () => {
+
+  try{
   const train = await Train.findOne({ name: "Galu Kumari" });
   const relevantSchedules = await Schedule.find({ trainRef: train._id })
   const schedule = relevantSchedules[1];
@@ -71,14 +73,11 @@ const seedStops = async () => {
     price += Math.floor(Math.random() * (50 - 10 + 1)) + 10;
     await stop.save();
   }
-  console.log("Seeding complete!");
-};
+  console.log("Galu kumari return stops Seeding complete!");
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
+} catch (error) {
+  console.error("Error populating stops:", error);
+}
+}
 
-// Connect to MongoDB
-mongoose
-  .connect(dbUrl)
-  .then(() => seedStops())
-  .catch((err) => console.error(err))
-  .finally(() => mongoose.disconnect());
+export default seedGaluKumariReturn;

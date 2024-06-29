@@ -1,17 +1,7 @@
-import mongoose from 'mongoose';
+
 import Train from '../models/train.model.js';
 import Schedule from '../models/schedule.model.js';
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
-
-// Connect to MongoDB
-mongoose.connect(dbUrl)
-.then(() => {
-    console.log('Connected to MongoDB');
-})
-.catch(err => {
-    console.error('Error connecting to MongoDB', err);
-});
 
 // Function to create schedule data
 const createSchedules = async () => {
@@ -77,9 +67,7 @@ const createSchedules = async () => {
     console.log('Schedules successfully populated');
   } catch (error) {
     console.error('Error populating schedules:', error);
-  } finally {
-    mongoose.connection.close();
-  }
+  } 
 };
 
-createSchedules();
+export default createSchedules;

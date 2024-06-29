@@ -1,17 +1,7 @@
-import mongoose from 'mongoose';
+
 import Train from '../models/train.model.js';
 import Coach from '../models/coach.model.js';
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
-
-// Connect to MongoDB
-mongoose.connect(dbUrl)
-.then(() => {
-    console.log('Connected to MongoDB');
-})
-.catch(err => {
-    console.error('Error connecting to MongoDB', err);
-});
 
 // List of Sri Lanka trains
 const trainNames = [
@@ -43,11 +33,10 @@ const createTrains = async () => {
       { name: 'Rajarata Rajina', coaches: coaches.slice(5, 8).map(coach => coach._id) },
       { name: 'Uttara Devi', coaches: coaches.slice(8, 10).map(coach => coach._id) },
     ]);
+    console.log('Trains successfully populated');
   } catch (error) {
     console.error('Error populating trains:', error);
-  } finally {
-    mongoose.connection.close();
-  }
+  } 
 };
 
-createTrains();
+export default createTrains;
