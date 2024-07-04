@@ -9,7 +9,6 @@ import Coach from "../models/coach.model.js";
 import CoachType from "../models/coachType.model.js";
 import Seat from "../models/seat.model.js";
 import ExpressError from "../utils/ExpressError.js";
-import PassengerDetail from "../models/passengerDetail.model.js";
 import mongoose from "mongoose";
 
 import bcryptjs from "bcryptjs";
@@ -301,7 +300,7 @@ export const getCoachDetails = async (req, res, next) => {
     );
     // add the booked seats to the coach object , we can use this since we used lean() to get plain JavaScript objects
     //by this al
-    requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach;
+    requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach.map(seat => seat._id);
   }
 
   res.status(200).json({ requestedClassCoaches, });
@@ -347,20 +346,6 @@ export const holdSeats = async (req, res, next) => {
     .json({ bookingId: booking._id, expireTime: holdExpiry });
 };
 
-export const savePassengerDetails = async (req, res, next) => {
-  const { bookingId, passengers } = req.body;
-  for (let passenger of passengers) {
-    const { name, age, gender } = passenger;
-    const passengerDetail = new PassengerDetail({
-      bookingRef: bookingId,
-      name,
-      age,
-      gender,
-    });
-    await passengerDetail.save();
-  }
-  return res.status(200).json({ message: "Passengers' details saved" });
-};
 
 export const confirmBooking = async (req, res, next) => {
   const { bookingId, userId } = req.body;
