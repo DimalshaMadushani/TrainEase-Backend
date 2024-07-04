@@ -1,11 +1,12 @@
 import express from 'express';
 import { asyncWrapper } from '../utils/AsyncWrapper.js';
-import { getSchedules, getTrainDetails, getCoachDetails, getBookingHistory,login,register, logout } from "../controllers/allControllers.js";
+import { getSchedules, getTrainDetails, getCoachDetails, getBookingHistory,login,register, logout, getStations } from "../controllers/allControllers.js";
 
 const router = express.Router();
 
+router.get('/stations', asyncWrapper(getStations)); // get all stations , thisis used in the search bar
 router.get('/schedules', asyncWrapper(getSchedules));
-router.post('/train-details', asyncWrapper(getTrainDetails));
+router.get('/train-details', asyncWrapper(getTrainDetails));
 router.get('/coach-details', asyncWrapper(getCoachDetails));
 
 router.get('/user/:id/history', asyncWrapper(getBookingHistory));

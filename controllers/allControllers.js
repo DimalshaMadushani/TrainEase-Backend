@@ -14,8 +14,15 @@ import mongoose from "mongoose";
 
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { populate } from "dotenv";
 // import nodemailer from "nodemailer";
 // import { PDFDocument, rgb } from "pdf-lib";
+
+//this controller is used to get all the station, this need to fetch all the station  in the search bar when need.
+export const getStations = async (req, res, next) => {
+  const stations = await Station.find();
+  res.status(200).json(stations);
+};
 
 export const getSchedules = async (req, res, next) => {
   // get the fromName, toName and date that user has entered in the search bar
@@ -79,62 +86,49 @@ export const getSchedules = async (req, res, next) => {
 };
 
 export const getTrainDetails = async (req, res, next) => {
-  const { schedule, fromStop, toStop } = req.body;
-  // console.log(req.body)
-  const fromStationName = await Station.findById(fromStop.stationRef) // Find the fromStation and select only the name field
-  const toStationName = await Station.findById(toStop.stationRef)// Find the toStation and select only the name field
-  const trainDetails = await Train.findById(schedule.trainRef).populate({
-    path: "coaches",
-    select: "coachTypeRef",
-    populate: {
-      path: "coachTypeRef",
-      select: "name",
+  const { scheduleId, fromStopId, toStopId } = req.query;
+
+  const fromStop = await Stop.findById(fromStopId).populate("stationRef"); // Find the fromStop and populate the stationRef field
+  const toStop = await Stop.findById(toStopId).populate("stationRef"); // Find the toStop and populate the stationRef field
+
+  const schedule = await Schedule.findById(scheduleId).populate({
+    path: "trainRef",//populate the trainRef field of the schedule
+    populate: { //populate the coaches field of the trainRef
+      path: "coaches",
+      select: "coachTypeRef",
+      populate: {//populate the coachTypeRef field of the coaches
+        path: "coachTypeRef",
+        select: "name",
+      },
     },
   });
-  let firstClassAvailable = false;
-  let secondClassAvailable = false;
-  let thirdClassAvailable = false;
+  const trainDetails = schedule.trainRef;
+
+  // get the coach types using the name 
+  const firstClass = await CoachType.findOne({ name: "First Class" }).lean();
+  const secondClass = await CoachType.findOne({ name: "Second Class" }).lean();
+  const thirdClass = await CoachType.findOne({ name: "Third Class" }).lean();
+
+  // set the availability of the classes to false, since we use lean to get plain JavaScript objects, we can modify the objects
+  firstClass.available = false;
+  secondClass.available = false;
+  thirdClass.available = false;  
+
   for (let coach of trainDetails.coaches) {
     if (coach.coachTypeRef.name === "First Class") {
-      firstClassAvailable = true;
+      firstClass.available = true;
     } else if (coach.coachTypeRef.name === "Second Class") {
-      secondClassAvailable = true;
+      secondClass.available = true;
     } else {
-      thirdClassAvailable = true;
+      thirdClass.available = true;
     }
   }
-  const priceFactors = await CoachType.find();
-  console.log("price factors",priceFactors)
-  const journeyPrice = toStop.price - fromStop.price;
-  console.log("train details",trainDetails)
+  
+
   return res.status(200).json({
-    
-    train: {
-      id: trainDetails._id,
-      name: trainDetails.name,
-      firstClassAvailable,
-      secondClassAvailable,
-      thirdClassAvailable,
-    },
-    // fromStation: {
-    //   // id: fromStationName._id,
-    //   name: fromStationName.name,
-    //   // arrivalTime: fromStop.arrivalTime,
-    //   departureTime: fromStop.departureTime,
-    //   platForm: fromStop.platform,
-    //   stopNumber: fromStop.stopNumber,
-    // },
-    fromStation: fromStationName.name,
-    toStation: toStationName.name,
-    // toStation: {
-    //   id: toStationName._id,
-    //   name: toStationName.name,
-    //   arrivalTime: toStop.arrivalTime,
-    //   // departureTime: toStop.departureTime,
-    // },
-    
-    journeyPrice,
-    priceFactors,
+    fromStation: fromStop.stationRef.name,
+    toStation: toStop.stationRef.name,
+    coachTypes: [firstClass, secondClass, thirdClass] // Send the coach types as an array with each having availability
   });
   // return res.status(200).json(trainDetails);
 };
@@ -225,51 +219,57 @@ export const getTrainDetails = async (req, res, next) => {
 // get the details of the coaches of the requested class of the train
 export const getCoachDetails = async (req, res, next) => {
   const {
-    trainId,
-    requestedCoachType,
     date,
-    fromStop,
-    toStop,
+    fromStopId,
+    toStopId,
     scheduleId,
-    journeyPrice,
-    priceFactor,
-  } = req.body;
+    selectedClassId
+  } = req.query;
+  console.log("query:  ",req.query);
 
   // get the train with the given trainId
   // populate the coaches field and the coachTypeRef field of each coach
-  const train = await Train.findById(trainId)
-    .populate({
-      path: "coaches",
-      populate: [
-        {
-          path: "coachTypeRef",
-          select: "name",
-        },
-        {
-          path: "seats",
-        },
-      ],
-    })
-    .lean(); // Use lean() to get plain JavaScript objects instead of Mongoose documents
-    console.log(train);
 
-  // from all the coaches in the train, filter out the coaches that have the requested coach type
+  const schedule = await Schedule.findById(scheduleId).populate({
+    path: "trainRef",
+    populate: {
+      path: "coaches",
+      populate: {
+        path: "seats coachTypeRef",
+        select: "-facilities"
+      },
+    },
+  }).lean(); // use lean() to get plain JavaScript objects so that we can modify the objects by adding new fields
+  console.log("schedule",schedule);
+  const train = schedule.trainRef;
+  console.log("train",train);
+
+  const selectedClass = await CoachType.findById(selectedClassId).select("name"); // get the selected class using the selectedClassId
+
+  // from all the coaches in the train, filter out the coaches that have the selected class
   const requestedClassCoaches = [];
+  console.log("Train.coaches",train.coaches)
+  console.log("seats", train.coaches[0].seats)
   train.coaches.forEach((coach) => {
-    if (coach.coachTypeRef.name === requestedCoachType) {
+    if (coach.coachTypeRef.name === selectedClass.name) {
       requestedClassCoaches.push(coach);
     }
   });
 
+  console.log("requestedClassCoaches",requestedClassCoaches);
   // get all the bookings of that schedule on that date
   const AllbookingsOnDate = await Booking.find({
-    scheduleRef: scheduleId,
+    scheduleRef: schedule._id,
     date: {
       $gte: new Date(date),
       $lt: new Date(date).setDate(new Date(date).getDate() + 1),
     },
     status: { $ne: "cancelled" }, // exclude the cancelled bookings. that means only confirmed and hold bookings are considered
-  }).populate("from to seats");
+  }).populate("from to seats");// populate the from, to and seats fields of the booking
+
+  // get the from stop and to stop using the fromStopId and toStopId
+  const fromStop = await Stop.findById(fromStopId);
+  const toStop = await Stop.findById(toStopId);
 
   // filter out the bookings that have a to stop number greater than the from stop number.
   // that is, the bookings that are relevant to the journey from the from stop to the to stop
@@ -299,11 +299,12 @@ export const getCoachDetails = async (req, res, next) => {
     const bookedSeatsofCurrCoach = relevantBookedSeats.filter((seat) =>
       allSeatsofCurrCoach.includes(seat._id.toString())
     );
-    // add the booked seats to the coach object
+    // add the booked seats to the coach object , we can use this since we used lean() to get plain JavaScript objects
+    //by this al
     requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach;
   }
 
-  res.status(200).json({ requestedClassCoaches, journeyPrice, priceFactor,fromStop,toStop });
+  res.status(200).json({ requestedClassCoaches, });
 };
 
 // hold the selected seats for the user until the holdExpiry time
