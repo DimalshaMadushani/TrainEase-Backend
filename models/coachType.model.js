@@ -9,6 +9,11 @@ const coachTypeSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    facilities: {
+        type: [String], // Array of strings to hold facilities for each class
+        required: true,
+    }
+
     });
 
 const CoachType = mongoose.model("CoachType", coachTypeSchema);

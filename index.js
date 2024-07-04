@@ -3,9 +3,13 @@ import express from "express";
 import allRoutes from "./routes/allRoutes.js";
 import { releaseExpiredHolds } from "./controllers/allControllers.js";
 import cors from "cors";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+
+dotenv.config();
 const app = express();
 
-const dbUrl = "mongodb://127.0.0.1:27017/train-booking-test";
+const dbUrl = "mongodb://127.0.0.1:27017/TrainEaseDB";
 
 mongoose
   .connect(dbUrl)
@@ -17,6 +21,7 @@ mongoose
   });
 
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 
 app.use("/api", allRoutes);

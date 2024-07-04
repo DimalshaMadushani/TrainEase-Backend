@@ -10,6 +10,7 @@ import CoachType from "../models/coachType.model.js";
 import Seat from "../models/seat.model.js";
 import ExpressError from "../utils/ExpressError.js";
 import PassengerDetail from "../models/passengerDetail.model.js";
+import mongoose from "mongoose";
 
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -78,10 +79,11 @@ export const getSchedules = async (req, res, next) => {
 };
 
 export const getTrainDetails = async (req, res, next) => {
-  const { scheduleId, trainId, fromStop, toStop } = req.body;
+  const { schedule, fromStop, toStop } = req.body;
+  // console.log(req.body)
   const fromStationName = await Station.findById(fromStop.stationRef) // Find the fromStation and select only the name field
   const toStationName = await Station.findById(toStop.stationRef)// Find the toStation and select only the name field
-  const trainDetails = await Train.findById(trainId).populate({
+  const trainDetails = await Train.findById(schedule.trainRef).populate({
     path: "coaches",
     select: "coachTypeRef",
     populate: {
@@ -102,9 +104,11 @@ export const getTrainDetails = async (req, res, next) => {
     }
   }
   const priceFactors = await CoachType.find();
+  console.log("price factors",priceFactors)
   const journeyPrice = toStop.price - fromStop.price;
+  console.log("train details",trainDetails)
   return res.status(200).json({
-    scheduleId,
+    
     train: {
       id: trainDetails._id,
       name: trainDetails.name,
@@ -112,26 +116,112 @@ export const getTrainDetails = async (req, res, next) => {
       secondClassAvailable,
       thirdClassAvailable,
     },
-    fromStation: {
-      id: fromStationName._id,
-      name: fromStationName.name,
-      // arrivalTime: fromStop.arrivalTime,
-      departureTime: fromStop.departureTime,
-      platForm: fromStop.platform,
-      stopNumber: fromStop.stopNumber,
-    },
-    toStation: {
-      id: toStationName._id,
-      name: toStationName.name,
-      arrivalTime: toStop.arrivalTime,
-      // departureTime: toStop.departureTime,
-    },
+    // fromStation: {
+    //   // id: fromStationName._id,
+    //   name: fromStationName.name,
+    //   // arrivalTime: fromStop.arrivalTime,
+    //   departureTime: fromStop.departureTime,
+    //   platForm: fromStop.platform,
+    //   stopNumber: fromStop.stopNumber,
+    // },
+    fromStation: fromStationName.name,
+    toStation: toStationName.name,
+    // toStation: {
+    //   id: toStationName._id,
+    //   name: toStationName.name,
+    //   arrivalTime: toStop.arrivalTime,
+    //   // departureTime: toStop.departureTime,
+    // },
+    
     journeyPrice,
     priceFactors,
   });
   // return res.status(200).json(trainDetails);
 };
 
+// Controller function for getting train details
+// export const getTrainDetails = async (req, res) => {
+//   const { scheduleId, trainId, fromStop, toStop } = req.body;
+
+//   // Validate the required data
+//   if (!scheduleId || !trainId || !fromStop || !toStop) {
+//       return res.status(400).json({ message: "Missing required fields: scheduleId, trainId, fromStop, or toStop" });
+//   }
+
+//   try {
+//       // Fetch station names using IDs provided in fromStop and toStop
+//       const fromStationName = await Station.findById(fromStop.stationRef).select('name');
+//       const toStationName = await Station.findById(toStop.stationRef).select('name');
+
+//       if (!fromStationName || !toStationName) {
+//           return res.status(404).json({ message: "One or more stations not found" });
+//       }
+
+//       // Fetch train details and populate the related coach types
+//       const trainDetails = await Train.findById(trainId).populate({
+//           path: "coaches",
+//           select: "coachTypeRef",
+//           populate: {
+//               path: "coachTypeRef",
+//               select: "name",
+//           },
+//       });
+
+//       if (!trainDetails) {
+//           return res.status(404).json({ message: "Train not found" });
+//       }
+
+//       // Determine class availability
+//       const classAvailability = {
+//           firstClassAvailable: false,
+//           secondClassAvailable: false,
+//           thirdClassAvailable: false
+//       };
+
+//       trainDetails.coaches.forEach(coach => {
+//           if (coach.coachTypeRef.name === "First Class") {
+//               classAvailability.firstClassAvailable = true;
+//           } else if (coach.coachTypeRef.name === "Second Class") {
+//               classAvailability.secondClassAvailable = true;
+//           } else if (coach.coachTypeRef.name === "Third Class") {
+//               classAvailability.thirdClassAvailable = true;
+//           }
+//       });
+
+//       // Calculate journey price
+//       const journeyPrice = toStop.price - fromStop.price;
+
+//       // Fetch price factors if needed
+//       const priceFactors = await CoachType.find(); // Assuming you need this for some reason
+
+//       // Construct and send response
+//       res.status(200).json({
+//           scheduleId,
+//           train: {
+//               id: trainDetails._id,
+//               name: trainDetails.name,
+//               ...classAvailability,
+//           },
+//           fromStation: {
+//               id: fromStationName._id,
+//               name: fromStationName.name,
+//               departureTime: fromStop.departureTime,
+//               platform: fromStop.platform,
+//               stopNumber: fromStop.stopNumber,
+//           },
+//           toStation: {
+//               id: toStationName._id,
+//               name: toStationName.name,
+//               arrivalTime: toStop.arrivalTime,
+//           },
+//           journeyPrice,
+//           priceFactors,
+//       });
+//   } catch (error) {
+//       console.error('Failed to fetch train details:', error);
+//       res.status(500).json({ message: 'Internal server error', error: error.message });
+//   }
+// };
 // get the details of the coaches of the requested class of the train
 export const getCoachDetails = async (req, res, next) => {
   const {
@@ -430,10 +520,49 @@ export async function releaseExpiredHolds() {
   }
 }
 
+// export const register = async (req, res, next) => {
+//   const { username, firstName, lastName, email, phone, password, gender } =
+//     req.body;
+//     console.log(req.body)
+//   const hashedPassword = await bcryptjs.hash(password, 12);
+//   try {
+//     const newUser = new User({
+//       username,
+//       firstName,
+//       lastName,
+//       email,
+//       phone,
+//       password: hashedPassword,
+//       gender,
+//     });
+
+//     await newUser.save();
+//     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+//     const { password: hashed, ...restOfUser } = newUser._doc;
+//     console.log(newUser._doc,token)
+//     res
+//       .cookie("access_token", token, { httpOnly: true })
+//       .status(200)
+//       .json(restOfUser);
+//   } catch (error) {
+//     if (error.keyValue.email) {
+//       return res.status(400).json({ message: "Email already exists" });
+//     } else if (error.keyValue.username) {
+//       return res.status(400).json({ message: "Username already exists" });
+//     }
+//     console.log(error);
+//     next(error);
+//   }
+// };
+
+
 export const register = async (req, res, next) => {
-  const { username, firstName, lastName, email, phone, password, gender } =
-    req.body;
+  const { username, firstName, lastName, email, phone, password, gender } = req.body;
+
+  console.log(req.body);  // Log the request body to debug
+
   const hashedPassword = await bcryptjs.hash(password, 12);
+
   try {
     const newUser = new User({
       username,
@@ -444,40 +573,54 @@ export const register = async (req, res, next) => {
       password: hashedPassword,
       gender,
     });
+
     await newUser.save();
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
     const { password: hashed, ...restOfUser } = newUser._doc;
-    res
-      .cookie("access_token", token, { httpOnly: true })
-      .status(200)
-      .json(restOfUser);
+    
+    
+    // console.log("doc",newUser._doc, "token",token);  // Log the user document and token to debug
+
+    res.cookie("access_token", token, { httpOnly: true })
+       .status(200)
+       .json(restOfUser);
   } catch (error) {
-    if (error.keyValue.email) {
-      return res.status(400).json({ message: "Email already exists" });
-    } else if (error.keyValue.username) {
-      return res.status(400).json({ message: "Username already exists" });
+    // console.log(error);  // Log the error to understand the structure
+
+    // Improved error handling
+    if (error instanceof mongoose.Error.ValidationError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    } else if (error.code && error.code === 11000) {
+      // Handle duplicate key error
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({ message: `${field} already exists` });
     }
+
     next(error);
   }
 };
 
 export const login = async (req, res, next) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
   if (!user) {
-    return res.status(400).json({ message: "Invalid email or password" });
+    return res.status(400).json({ message: "Invalid username or password" });
   }
   const isMatch = await bcryptjs.compare(password, user.password);
   if (!isMatch) {
-    return res.status(400).json({ message: "Invalid email or password" });
+    return res.status(400).json({ message: "Invalid username or password" });
   }
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
   const { password: hashed, ...restOfUser } = user._doc;
+  console.log("rest of user",restOfUser);
   res
     .cookie("access_token", token, { httpOnly: true })
     .status(200)
     .json(restOfUser);
+    // .json({sucess:true,...restOfUser});
 };
+
+
 
 export const logout = async (req, res, next) => {
   res.clearCookie("access_token").json({ message: "Logged out" });
