@@ -1,7 +1,6 @@
 import Schedule from "../models/schedule.model.js";
 import Stop from "../models/stop.model.js";
 import Train from "../models/train.model.js";
-import BookedSeat from "../models/BookedSeat.model.js";
 import Booking from "../models/booking.model.js";
 import User from "../models/user.model.js";
 import Station from "../models/station.model.js";
@@ -332,15 +331,8 @@ export const holdSeats = async (req, res, next) => {
     holdExpiry, // store the expiry time of the hold
   });
   await booking.save();
-  for (let seatId of selectedSeatIds) {
-    const bookedSeat = new BookedSeat({
-      bookingRef: booking._id,
-      seatRef: seatId,
-      amount: seatPrice,
-    });
-    await bookedSeat.save();
-  }
-  console.log("booking", booking);
+  console.log("ticket price: ", booking.ticketPrice)
+  
   return res
     .status(200)
     .json({ bookingId: booking._id, expireTime: holdExpiry });

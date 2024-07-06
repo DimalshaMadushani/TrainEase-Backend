@@ -3,6 +3,7 @@ import Schedule from '../models/schedule.model.js';
 import User from '../models/user.model.js';
 import Stop from '../models/stop.model.js';
 import Booking from '../models/booking.model.js';
+import Train from '../models/train.model.js';
 
 
 
@@ -19,6 +20,8 @@ const createBookings = async () => {
     
         // Randomly select a schedule
         const schedule = schedules[Math.floor(Math.random() * schedules.length)];
+        const trainOnSchedule = await Train.findOne({ _id: schedule.trainRef }).populate('coaches');
+        const getRandomCoach = trainOnSchedule.coaches[Math.floor(Math.random() * trainOnSchedule.coaches.length)];
     
         // Get all stops for the schedule
         const stops = await Stop.find({ scheduleRef: schedule._id });
@@ -40,6 +43,18 @@ const createBookings = async () => {
             endStop = stop1;
         }
 
+        const getRandomSeats = () => {
+          const randomSeatCount = Math.floor(Math.random() * 5) + 1;
+          const seats = []
+          for (let i = 0; i < randomSeatCount; i++) {
+            const randomSeat = getRandomCoach.seats[Math.floor(Math.random() * getRandomCoach.seats.length)];
+            if (!seats.includes(randomSeat)) {
+              seats.push(randomSeat);
+            }
+          }
+          return seats;
+        }
+
         // Create booking instances
         await Booking.create({
             userRef: user._id,
@@ -48,7 +63,8 @@ const createBookings = async () => {
             from: startStop._id,
             to: endStop._id,
             totalAmount: Math.abs(startStop.price - endStop.price),
-            status: 'confirmed'
+            status: 'confirmed',
+            seats: getRandomSeats(),
         });
     }
     console.log('Bookings successfully seeded');

@@ -46,6 +46,11 @@ const bookingSchema = new mongoose.Schema({
   },
 });
 
+// Virtual property to calculate ticket price
+bookingSchema.virtual("ticketPrice").get(function () {
+  return this.totalAmount / this.seats.length;
+});
+
 const Booking = mongoose.model("Booking", bookingSchema);
 
 export default Booking;
