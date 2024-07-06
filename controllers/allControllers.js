@@ -19,7 +19,7 @@ import { populate } from "dotenv";
 
 //this controller is used to get all the station, this need to fetch all the station  in the search bar when need.
 export const getStations = async (req, res, next) => {
-  const stations = await Station.find();
+  const stations = await Station.find().sort("name");
   res.status(200).json(stations);
 };
 
@@ -91,11 +91,13 @@ export const getTrainDetails = async (req, res, next) => {
   const toStop = await Stop.findById(toStopId).populate("stationRef"); // Find the toStop and populate the stationRef field
 
   const schedule = await Schedule.findById(scheduleId).populate({
-    path: "trainRef",//populate the trainRef field of the schedule
-    populate: { //populate the coaches field of the trainRef
+    path: "trainRef", //populate the trainRef field of the schedule
+    populate: {
+      //populate the coaches field of the trainRef
       path: "coaches",
       select: "coachTypeRef",
-      populate: {//populate the coachTypeRef field of the coaches
+      populate: {
+        //populate the coachTypeRef field of the coaches
         path: "coachTypeRef",
         select: "name",
       },
@@ -103,7 +105,7 @@ export const getTrainDetails = async (req, res, next) => {
   });
   const trainDetails = schedule.trainRef;
 
-  // get the coach types using the name 
+  // get the coach types using the name
   const firstClass = await CoachType.findOne({ name: "First Class" }).lean();
   const secondClass = await CoachType.findOne({ name: "Second Class" }).lean();
   const thirdClass = await CoachType.findOne({ name: "Third Class" }).lean();
@@ -111,7 +113,7 @@ export const getTrainDetails = async (req, res, next) => {
   // set the availability of the classes to false, since we use lean to get plain JavaScript objects, we can modify the objects
   firstClass.available = false;
   secondClass.available = false;
-  thirdClass.available = false;  
+  thirdClass.available = false;
 
   for (let coach of trainDetails.coaches) {
     if (coach.coachTypeRef.name === "First Class") {
@@ -122,12 +124,11 @@ export const getTrainDetails = async (req, res, next) => {
       thirdClass.available = true;
     }
   }
-  
 
   return res.status(200).json({
     fromStation: fromStop.stationRef.name,
     toStation: toStop.stationRef.name,
-    coachTypes: [firstClass, secondClass, thirdClass] // Send the coach types as an array with each having availability
+    coachTypes: [firstClass, secondClass, thirdClass], // Send the coach types as an array with each having availability
   });
   // return res.status(200).json(trainDetails);
 };
@@ -217,45 +218,37 @@ export const getTrainDetails = async (req, res, next) => {
 // };
 // get the details of the coaches of the requested class of the train
 export const getCoachDetails = async (req, res, next) => {
-  const {
-    date,
-    fromStopId,
-    toStopId,
-    scheduleId,
-    selectedClassId
-  } = req.query;
-  console.log("query:  ",req.query);
+  const { date, fromStopId, toStopId, scheduleId, selectedClassId } = req.query;
 
   // get the train with the given trainId
   // populate the coaches field and the coachTypeRef field of each coach
 
-  const schedule = await Schedule.findById(scheduleId).populate({
-    path: "trainRef",
-    populate: {
-      path: "coaches",
+  const schedule = await Schedule.findById(scheduleId)
+    .populate({
+      path: "trainRef",
       populate: {
-        path: "seats coachTypeRef",
-        select: "-facilities"
+        path: "coaches",
+        populate: {
+          path: "seats coachTypeRef",
+          select: "-facilities",
+        },
       },
-    },
-  }).lean(); // use lean() to get plain JavaScript objects so that we can modify the objects by adding new fields
-  console.log("schedule",schedule);
+    })
+    .lean(); // use lean() to get plain JavaScript objects so that we can modify the objects by adding new fields
   const train = schedule.trainRef;
-  console.log("train",train);
 
-  const selectedClass = await CoachType.findById(selectedClassId).select("name"); // get the selected class using the selectedClassId
+  const selectedClass = await CoachType.findById(selectedClassId).select(
+    "name"
+  ); // get the selected class using the selectedClassId
 
   // from all the coaches in the train, filter out the coaches that have the selected class
   const requestedClassCoaches = [];
-  console.log("Train.coaches",train.coaches)
-  console.log("seats", train.coaches[0].seats)
   train.coaches.forEach((coach) => {
     if (coach.coachTypeRef.name === selectedClass.name) {
       requestedClassCoaches.push(coach);
     }
   });
 
-  console.log("requestedClassCoaches",requestedClassCoaches);
   // get all the bookings of that schedule on that date
   const AllbookingsOnDate = await Booking.find({
     scheduleRef: schedule._id,
@@ -264,7 +257,7 @@ export const getCoachDetails = async (req, res, next) => {
       $lt: new Date(date).setDate(new Date(date).getDate() + 1),
     },
     status: { $ne: "cancelled" }, // exclude the cancelled bookings. that means only confirmed and hold bookings are considered
-  }).populate("from to seats");// populate the from, to and seats fields of the booking
+  }).populate("from to seats"); // populate the from, to and seats fields of the booking
 
   // get the from stop and to stop using the fromStopId and toStopId
   const fromStop = await Stop.findById(fromStopId);
@@ -300,10 +293,12 @@ export const getCoachDetails = async (req, res, next) => {
     );
     // add the booked seats to the coach object , we can use this since we used lean() to get plain JavaScript objects
     //by this al
-    requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach.map(seat => seat._id);
+    requestedClassCoaches[i].alreadyBookedSeats = bookedSeatsofCurrCoach.map(
+      (seat) => seat._id
+    );
   }
 
-  res.status(200).json({ requestedClassCoaches, });
+  res.status(200).json({ requestedClassCoaches });
 };
 
 // hold the selected seats for the user until the holdExpiry time
@@ -314,19 +309,24 @@ export const holdSeats = async (req, res, next) => {
     fromStopId,
     toStopId,
     selectedSeatIds,
+    selectedClassId,
     date,
-    priceFactor,
-    journeyPrice,
-    pax,
   } = req.body;
-  const holdExpiry = new Date(Date.now() + 12 * 60 * 1000); // 12 minutes from now
+  console.log(req.body);
+  const selectedClass = await CoachType.findById(selectedClassId).select(
+    "priceFactor"
+  ); // get the selected class using the selectedClassId
+  const fromStop = await Stop.findById(fromStopId).select("price"); // get the from stop using the fromStopId
+  const toStop = await Stop.findById(toStopId).select("price"); // get the to stop using the toStopId
+  const seatPrice = selectedClass.priceFactor * (toStop.price - fromStop.price); // calculate the total amount
+  const holdExpiry = new Date(Date.now() + 5 * 60 * 1000); // 12 minutes from now
   const booking = new Booking({
     userRef: userId,
     scheduleRef: scheduleId,
-    date,
+    date: new Date(date),
     from: fromStopId,
     to: toStopId,
-    totalAmount: journeyPrice * priceFactor * pax,
+    totalAmount: seatPrice * selectedSeatIds.length,
     status: "hold",
     seats: selectedSeatIds,
     holdExpiry, // store the expiry time of the hold
@@ -336,19 +336,18 @@ export const holdSeats = async (req, res, next) => {
     const bookedSeat = new BookedSeat({
       bookingRef: booking._id,
       seatRef: seatId,
-      amount: journeyPrice * priceFactor,
+      amount: seatPrice,
     });
     await bookedSeat.save();
-    booking.seats.push(seatId);
   }
+  console.log("booking", booking);
   return res
     .status(200)
     .json({ bookingId: booking._id, expireTime: holdExpiry });
 };
 
-
 export const confirmBooking = async (req, res, next) => {
-  const { bookingId, userId } = req.body;
+  const bookingId = req.params.id;
   const booking = await Booking.findById(bookingId)
     .populate({
       path: "seats",
@@ -378,20 +377,19 @@ export const confirmBooking = async (req, res, next) => {
   await booking.save();
 
   // Find the user by ID
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
+  // const user = await User.findById(userId);
+  // if (!user) {
+  //   return res.status(404).json({ message: "User not found" });
+  // }
 
-//   // Generate PDFs for each seat
-//   const pdfBuffers = await generateETickets(booking);
+  //   // Generate PDFs for each seat
+  //   const pdfBuffers = await generateETickets(booking);
 
-//   // Send email to the user with e-tickets
-//   await sendConfirmationEmail(user.email, pdfBuffers);
+  //   // Send email to the user with e-tickets
+  //   await sendConfirmationEmail(user.email, pdfBuffers);
 
-  return res.status(200).json({ message: "Booking confirmed" });
+  return res.status(200).json({ booking });
 };
-
 
 // const generateETickets = async (booking) => {
 //   const pdfBuffers = [];
@@ -454,7 +452,6 @@ export const confirmBooking = async (req, res, next) => {
 //   return pdfBuffers;
 // };
 
-
 // const sendConfirmationEmail = async (userEmail, pdfBuffers) => {
 //   // Create a transporter
 //   let transporter = nodemailer.createTransport({
@@ -483,8 +480,11 @@ export const confirmBooking = async (req, res, next) => {
 // };
 
 export const cancelBooking = async (req, res, next) => {
-  const { bookingId } = req.body;
+  const bookingId = req.params.id;
   const booking = await Booking.findById(bookingId);
+  if(!(booking.userRef.equals(req.user.id))){
+    throw new ExpressError("Unauthorized", 401);
+  }
   if (booking.date - Date.now() <= 0) {
     throw new ExpressError("Cannot cancel past bookings", 400);
   }
@@ -502,6 +502,7 @@ export async function releaseExpiredHolds() {
   });
   for (let booking of bookings) {
     booking.status = "cancelled";
+    booking.holdExpiry = undefined;
     await booking.save();
   }
 }
@@ -541,11 +542,8 @@ export async function releaseExpiredHolds() {
 //   }
 // };
 
-
 export const register = async (req, res, next) => {
-  const { username, firstName, lastName, email, phone, password, gender } = req.body;
-
-  console.log(req.body);  // Log the request body to debug
+  const { username, email, phone, password } = req.body;
 
   const hashedPassword = await bcryptjs.hash(password, 12);
 
@@ -563,19 +561,21 @@ export const register = async (req, res, next) => {
     await newUser.save();
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
     const { password: hashed, ...restOfUser } = newUser._doc;
-    
-    
+
     // console.log("doc",newUser._doc, "token",token);  // Log the user document and token to debug
 
-    res.cookie("access_token", token, { httpOnly: true })
-       .status(200)
-       .json(restOfUser);
+    res
+      .cookie("access_token", token, { httpOnly: true })
+      .status(200)
+      .json(restOfUser);
   } catch (error) {
     // console.log(error);  // Log the error to understand the structure
 
     // Improved error handling
     if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ message: "Validation error", errors: error.errors });
+      return res
+        .status(400)
+        .json({ message: "Validation error", errors: error.errors });
     } else if (error.code && error.code === 11000) {
       // Handle duplicate key error
       const field = Object.keys(error.keyValue)[0];
@@ -598,27 +598,53 @@ export const login = async (req, res, next) => {
   }
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
   const { password: hashed, ...restOfUser } = user._doc;
-  console.log("rest of user",restOfUser);
   res
     .cookie("access_token", token, { httpOnly: true })
     .status(200)
     .json(restOfUser);
-    // .json({sucess:true,...restOfUser});
+  // .json({sucess:true,...restOfUser});
 };
 
-
-
-export const logout = async (req, res, next) => {
+export const logout = (req, res, next) => {
+  console.log("logout");
   res.clearCookie("access_token").json({ message: "Logged out" });
 };
 
 export const getProfile = async (req, res, next) => {
+  console.log("req.user", req.user);
   const user = await User.findById(req.user.id).select("-password");
+  console.log("user", user);
   res.status(200).json(user);
 };
 
+export const editProfile = async (req, res, next) => {
+  const { username, email, phone, oldPassword, newPassword } = req.body;
+  console.log("req.user", req.body);
+  const user = await User.findById(req.user.id);
+  const isMatch = await bcryptjs.compare(oldPassword, user.password);
+  if (!isMatch) {
+    return res.status(400).json({ message: "Invalid password" });
+  }
+  let newUserData = { username, email, phone };
+  if (newPassword) {
+    const hashedPassword = await bcryptjs.hash(newPassword, 12);
+    newUserData.password = hashedPassword;
+  }
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user.id,
+    {
+      $set: newUserData,
+    },
+    {
+      new: true,
+    }
+  ).select("-password");
+  res.status(200).json(updatedUser);
+};
+
 export const getBookingHistory = async (req, res, next) => {
-  const bookings = await Booking.find({ userRef: req.params.id })
+  console.log("inside getBookingHistory")
+  const bookings = await Booking.find({ userRef: req.user.id, status: "confirmed"})
     .populate({
       path: "scheduleRef",
       select: "trainRef",
