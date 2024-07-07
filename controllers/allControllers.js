@@ -12,7 +12,8 @@ import mongoose from "mongoose";
 
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { populate } from "dotenv";
+import nodemailer from "nodemailer";
+import { PDFDocument, rgb } from "pdf-lib";
 // import nodemailer from "nodemailer";
 // import { PDFDocument, rgb } from "pdf-lib";
 
@@ -26,7 +27,6 @@ export const getStationName = async (req, res, next) => {
   const station = await Station.findById(req.params.id);
   res.status(200).json(station);
 };
-
 
 export const getSchedules = async (req, res, next) => {
   // get the fromName, toName and date that user has entered in the search bar
@@ -317,7 +317,6 @@ export const holdSeats = async (req, res, next) => {
     selectedClassId,
     date,
   } = req.body;
-  console.log(req.body);
   const selectedClass = await CoachType.findById(selectedClassId).select(
     "priceFactor"
   ); // get the selected class using the selectedClassId
@@ -337,8 +336,7 @@ export const holdSeats = async (req, res, next) => {
     holdExpiry, // store the expiry time of the hold
   });
   await booking.save();
-  console.log("ticket price: ", booking.ticketPrice)
-  
+
   return res
     .status(200)
     .json({ bookingId: booking._id, expireTime: holdExpiry });
@@ -353,7 +351,7 @@ export const confirmBooking = async (req, res, next) => {
     })
     .populate({
       path: "userRef",
-      select: "email firstName lastName",
+      select: "email username",
     })
     .populate({
       path: "from",
@@ -373,82 +371,122 @@ export const confirmBooking = async (req, res, next) => {
   booking.status = "confirmed";
   booking.holdExpiry = undefined;
   await booking.save();
+  console.log("booking", booking);
 
-  // Find the user by ID
+  // // Find the user by ID
   // const user = await User.findById(userId);
   // if (!user) {
   //   return res.status(404).json({ message: "User not found" });
   // }
 
-  //   // Generate PDFs for each seat
-  //   const pdfBuffers = await generateETickets(booking);
+    // Generate PDFs for each seat
+    const pdfBuffers = await generateETickets(booking);
 
-  //   // Send email to the user with e-tickets
-  //   await sendConfirmationEmail(user.email, pdfBuffers);
+    // Send email to the user with e-tickets
+    await sendConfirmationEmail(pdfBuffers);
+    console.log("Email sent");
 
   return res.status(200).json({ booking });
 };
 
-// const generateETickets = async (booking) => {
-//   const pdfBuffers = [];
+const generateETickets = async (booking) => {
+  const pdfBuffers = [];
+  console.log("ticket price", booking.ticketPrice);
 
-//   for (const seat of booking.seats) {
-//     const pdfDoc = await PDFDocument.create();
-//     const page = pdfDoc.addPage([600, 300]);
-//     const { width, height } = page.getSize();
-//     const fontSize = 20;
+  for (const seat of booking.seats) {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([600, 300]);
+    const { width, height } = page.getSize();
+    const fontSize = 20;
 
-//     page.drawText(`Booking ID: ${booking._id}`, {
-//       x: 50,
-//       y: height - 4 * fontSize,
-//       size: fontSize,
-//     });
+    page.drawText(`Booking ID: ${booking._id}`, {
+      x: 50,
+      y: height - 4 * fontSize,
+      size: fontSize,
+    });
 
-//     page.drawText(
-//       `User: ${booking.userRef.firstName} ${booking.userRef.lastName}`,
-//       {
-//         x: 50,
-//         y: height - 6 * fontSize,
-//         size: fontSize,
-//       }
-//     );
+    page.drawText(
+      `User: ${booking.userRef.username} (${booking.userRef.email})`,
+      {
+        x: 50,
+        y: height - 6 * fontSize,
+        size: fontSize,
+      }
+    );
 
-//     page.drawText(`Seat: ${seat.name}`, {
-//       x: 50,
-//       y: height - 8 * fontSize,
-//       size: fontSize,
-//     });
+    page.drawText(`Seat: ${seat.name}`, {
+      x: 50,
+      y: height - 8 * fontSize,
+      size: fontSize,
+    });
 
-//     page.drawText(`From: ${booking.from.stationRef.name}`, {
-//       x: 50,
-//       y: height - 10 * fontSize,
-//       size: fontSize,
-//     });
+    page.drawText(`From: ${booking.from.stationRef.name}`, {
+      x: 50,
+      y: height - 10 * fontSize,
+      size: fontSize,
+    });
 
-//     page.drawText(`To: ${booking.to.stationRef.name}`, {
-//       x: 50,
-//       y: height - 12 * fontSize,
-//       size: fontSize,
-//     });
+    page.drawText(`To: ${booking.to.stationRef.name}`, {
+      x: 50,
+      y: height - 12 * fontSize,
+      size: fontSize,
+    });
 
-//     page.drawText(`Date: ${booking.date}`, {
-//       x: 50,
-//       y: height - 14 * fontSize,
-//       size: fontSize,
-//     });
+    page.drawText(`Date: ${booking.date.toDateString()}`, {
+      x: 50,
+      y: height - 14 * fontSize,
+      size: fontSize,
+    });
 
-//     page.drawText(`Amount: ${seat.amount}`, {
-//       x: 50,
-//       y: height - 16 * fontSize,
-//       size: fontSize,
-//     });
+    page.drawText(`Amount: ${booking.ticketPrice}}`, {
+      x: 50,
+      y: height - 16 * fontSize,
+      size: fontSize,
+    });
 
-//     const pdfBytes = await pdfDoc.save();
-//     pdfBuffers.push(pdfBytes);
-//   }
+    const pdfBytes = await pdfDoc.save();
+    pdfBuffers.push(pdfBytes);
+  }
 
-//   return pdfBuffers;
-// };
+  console.log("PDFs generated");
+
+  return pdfBuffers;
+};
+
+const sendConfirmationEmail = async (pdfBuffers) => {
+  console.log(process.env.EMAIL_USER, process.env.EMAIL_PASSWORD)
+  // Create a transporter object using Gmail SMTP
+  const userEmail = "madushaniagd@gmail.com"
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: "railwise21@gmail.com",
+      pass: "ycuummdlwviolhod",
+    },
+  });
+
+  // Email options
+  const mailOptions = {
+    from: "railwise21@gmail.com",
+    to: userEmail,
+    subject: "Booking Confirmation",
+    text: "Your booking has been confirmed. Please find your e-tickets attached.",
+    attachments: pdfBuffers.map((buffer, index) => ({
+      filename: `e-ticket-${index + 1}.pdf`,
+      content: buffer,
+      contentType: "application/pdf",
+    })),
+  };
+
+  // Send the email
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      throw new ExpressError("Failed to send email", 500);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
+};
 
 // const sendConfirmationEmail = async (userEmail, pdfBuffers) => {
 //   // Create a transporter
@@ -480,7 +518,7 @@ export const confirmBooking = async (req, res, next) => {
 export const cancelBooking = async (req, res, next) => {
   const bookingId = req.params.id;
   const booking = await Booking.findById(bookingId);
-  if(!(booking.userRef.equals(req.user.id))){
+  if (!booking.userRef.equals(req.user.id)) {
     throw new ExpressError("Unauthorized", 401);
   }
   if (booking.date - Date.now() <= 0) {
@@ -557,14 +595,12 @@ export const register = async (req, res, next) => {
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
     const { password: hashed, ...restOfUser } = newUser._doc;
 
-    // console.log("doc",newUser._doc, "token",token);  // Log the user document and token to debug
 
     res
       .cookie("access_token", token, { httpOnly: true })
       .status(200)
       .json(restOfUser);
   } catch (error) {
-    // console.log(error);  // Log the error to understand the structure
 
     // Improved error handling
     if (error instanceof mongoose.Error.ValidationError) {
@@ -601,7 +637,6 @@ export const login = async (req, res, next) => {
 };
 
 export const logout = (req, res, next) => {
-  console.log("logout");
   res.clearCookie("access_token").json({ message: "Logged out" });
 };
 
@@ -612,7 +647,6 @@ export const getProfile = async (req, res, next) => {
 
 export const editProfile = async (req, res, next) => {
   const { username, email, phone, oldPassword, newPassword } = req.body;
-  console.log("req.user", req.body);
   const user = await User.findById(req.user.id);
   const isMatch = await bcryptjs.compare(oldPassword, user.password);
   if (!isMatch) {
@@ -636,8 +670,10 @@ export const editProfile = async (req, res, next) => {
 };
 
 export const getBookingHistory = async (req, res, next) => {
-  console.log("inside getBookingHistory")
-  const bookings = await Booking.find({ userRef: req.user.id, status: "confirmed"})
+  const bookings = await Booking.find({
+    userRef: req.user.id,
+    status: "confirmed",
+  })
     .populate({
       path: "scheduleRef",
       select: "trainRef",
@@ -661,4 +697,62 @@ export const getBookingHistory = async (req, res, next) => {
     .sort({ date: -1 });
 
   res.status(200).json(bookings);
+};
+
+// export const getBookingsByDate = async (req, res) => {
+//   try {
+//     const bookings = await Booking.aggregate([
+//       {
+//         $group: { // Group the bookings by date
+//           _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } }, // Format the date as "YYYY-MM-DD" and use it as the group ID
+//           "Total Bookings": { $sum: 1 }, // Count the number of bookings for each date
+//         },
+//       },
+//       { $sort: { _id: 1 } } // Sort the results by date in ascending order
+//     ]);
+
+//     console.log(bookings);
+
+//     res.status(200).json(bookings);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+// Fetch bookings grouped by date
+export const getBookingsByDate = async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  let start = new Date(startDate);
+  let end = new Date(endDate);
+
+  // Default to past 30 days if no date range provided
+  if (!startDate || !endDate) {
+    end = new Date();
+    start = new Date();
+    start.setDate(end.getDate() - 30);
+  }
+
+  try {
+    const bookings = await Booking.aggregate([
+      {
+        $match: {
+          date: {
+            $gte: start,
+            $lte: end,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+    res.status(200).json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
