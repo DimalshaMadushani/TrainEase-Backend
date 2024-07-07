@@ -22,6 +22,12 @@ export const getStations = async (req, res, next) => {
   res.status(200).json(stations);
 };
 
+export const getStationName = async (req, res, next) => {
+  const station = await Station.findById(req.params.id);
+  res.status(200).json(station);
+};
+
+
 export const getSchedules = async (req, res, next) => {
   // get the fromName, toName and date that user has entered in the search bar
   const { fromName, toName, date } = req.query;
@@ -542,12 +548,9 @@ export const register = async (req, res, next) => {
   try {
     const newUser = new User({
       username,
-      firstName,
-      lastName,
       email,
       phone,
       password: hashedPassword,
-      gender,
     });
 
     await newUser.save();
@@ -603,9 +606,7 @@ export const logout = (req, res, next) => {
 };
 
 export const getProfile = async (req, res, next) => {
-  console.log("req.user", req.user);
   const user = await User.findById(req.user.id).select("-password");
-  console.log("user", user);
   res.status(200).json(user);
 };
 
