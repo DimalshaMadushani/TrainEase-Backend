@@ -13,11 +13,13 @@ import {
   confirmBooking,
   getProfile,
   editProfile,
-  cancelBooking
+  cancelBooking,
+  getStationName
 } from "../controllers/allControllers.js";
 import { verifyToken } from "../utils/verifyToken.js";
 const router = express.Router();
 
+router.get("/stationName/:id", asyncWrapper(getStationName));
 router.get("/stations", asyncWrapper(getStations)); // get all stations , thisis used in the search bar
 router.get("/schedules", asyncWrapper(getSchedules));
 router.get("/train-details", asyncWrapper(getTrainDetails));
