@@ -14,7 +14,8 @@ import {
   getProfile,
   editProfile,
   cancelBooking,
-  getStationName
+  getStationName,
+  getBookingsByDate,
 } from "../controllers/allControllers.js";
 import { verifyToken } from "../utils/verifyToken.js";
 const router = express.Router();
@@ -35,5 +36,9 @@ router.get("/logout", verifyToken, asyncWrapper(logout));
 router.get("/user/getProfile", verifyToken, asyncWrapper(getProfile));
 router.post("/user/editProfile", verifyToken, asyncWrapper(editProfile));
 router.delete("/user/cancelBooking/:id", verifyToken, asyncWrapper(cancelBooking));
+
+// for admin panel
+router.get("/bookings/bookingsByDate", getBookingsByDate);
+
 
 export default router;
