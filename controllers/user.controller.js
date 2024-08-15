@@ -88,6 +88,8 @@ export const cancelBooking = async (req, res, next) => {
   
   export const getProfile = async (req, res, next) => {
     const user = await User.findById(req.user.id).select("-password");
+    if (!user) {
+      return next(new ExpressError("User not found", 404));}
     res.status(200).json(user);
   };
   
@@ -146,5 +148,4 @@ export const cancelBooking = async (req, res, next) => {
   };
   
 
-  
-  
+ 

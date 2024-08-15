@@ -13,8 +13,10 @@ const createBookings = async () => {
     // Get the user data
     const users = await User.find({});
     const schedules = await Schedule.find({});
+    const start = new Date("2024-01-01");
+    const end = new Date("2024-12-31");
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 500; i++) {
         // Randomly select a user
         const user = users[Math.floor(Math.random() * users.length)];
     
@@ -59,7 +61,7 @@ const createBookings = async () => {
         await Booking.create({
             userRef: user._id,
             scheduleRef: schedule._id,
-            date: new Date(),
+            date: new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime())),
             from: startStop._id,
             to: endStop._id,
             totalAmount: Math.abs(startStop.price - endStop.price),
