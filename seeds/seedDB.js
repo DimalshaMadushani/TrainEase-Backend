@@ -13,6 +13,7 @@ import seedUttaraStops from "./stop.Uttara.seeds.js";
 import seedUttaraReturn from "./stop.UttaraReturn.seeds.js";
 import createUser from "./user.seeds.js";
 import createBookings from "./booking.seeds.js";
+import seedSeatsWithCoach from "./seedSeatsWithCoach.js";
 
 const dbUrl = "mongodb://127.0.0.1:27017/TrainEaseDB";
 
@@ -42,6 +43,7 @@ mongoose
         await seedUttaraReturn();
         await createUser();
         await createBookings();
+        await seedSeatsWithCoach();
       console.log("Database seeded successfully");
     } catch (error) {
       console.error("Error seeding database:", error);

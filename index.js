@@ -1,7 +1,10 @@
 import mongoose from "mongoose";
 import express from "express";
-import allRoutes from "./routes/allRoutes.js";
-import { releaseExpiredHolds } from "./controllers/allControllers.js";
+import userRoutes from "./routes/user.routes.js";
+import bookingRoutes from "./routes/booking.routes.js";
+import searchRoutes from "./routes/search.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import { releaseExpiredHolds } from "./controllers/utils/booking.utils.js";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -24,7 +27,10 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 
-app.use("/api", allRoutes);
+app.use("/api/user",userRoutes);
+app.use("/api/booking",bookingRoutes);
+app.use("/api/search",searchRoutes);
+app.use("/api/admin",adminRoutes);
 
 // Periodic task to release expired booking holds
 setInterval(releaseExpiredHolds, 60 * 1000); // Run every minute

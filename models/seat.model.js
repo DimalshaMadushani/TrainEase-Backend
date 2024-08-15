@@ -9,6 +9,11 @@ const seat = new mongoose.Schema({
     type: [Number, Number],
     required: true,
   },
+  coachRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Coach",
+    // required: true,
+  },
 });
 
 const Seat = mongoose.model("Seat", seat);
