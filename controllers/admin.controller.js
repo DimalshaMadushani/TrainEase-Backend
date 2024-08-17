@@ -1,6 +1,7 @@
 import Booking from "../models/booking.model.js";
 import Schedule from "../models/schedule.model.js";
 import Train from "../models/train.model.js";
+import User from "../models/user.model.js";
 import mongoose from "mongoose";
 
 // Utility function to generate an array of dates between two dates
@@ -232,3 +233,57 @@ export const getBookingsByDateAndSchedule = async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   };
+
+
+
+
+  // Fetch number of users registered grouped by date
+export const getUserRegistrations = async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  let start = new Date(startDate);
+  let end = new Date(endDate);
+  end.setHours(23, 59, 59, 999); // Set end time to the end of the day
+
+  try {
+    // Generate all dates within the range
+    const dateRange = generateDateRange(start, end);
+
+    const registrations = await User.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: start,
+            $lte: end,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Convert the results to an object with dates as keys
+    const registrationsMap = registrations.reduce((acc, registration) => {
+      acc[registration._id] = registration.count;
+      return acc;
+    }, {});
+
+    // Map over the dateRange to ensure all dates are covered
+    const result = dateRange.map(date => {
+      const formattedDate = date.toISOString().split('T')[0]; // Format to YYYY-MM-DD
+      return {
+        _id: formattedDate,
+        count: registrationsMap[formattedDate] || 0,
+      };
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
