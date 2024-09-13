@@ -6,11 +6,34 @@ import mongoose from "mongoose";
 
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { sendCancellationEmail } from "./utils/user.utils.js";
 
 
 export const cancelBooking = async (req, res, next) => {
     const bookingId = req.params.id;
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId)
+      .populate({
+        path: "seats",
+        select: "name", // Only select the name field
+      })
+      .populate({
+        path: "userRef",
+        select: "email username",
+      })
+      .populate({
+        path: "from",
+        select: "stationRef platform arrivalTime departureTime",
+        populate: {
+          path: "stationRef",
+        },
+      })
+      .populate({
+        path: "to",
+        select: "stationRef arrivalTime",
+        populate: {
+          path: "stationRef",
+        },
+      });
     if (!booking.userRef.equals(req.user.id)) {
       throw new ExpressError("Unauthorized", 401);
     }
@@ -20,6 +43,9 @@ export const cancelBooking = async (req, res, next) => {
     booking.status = "cancelled";
     booking.holdExpiry = undefined;
     await booking.save();
+    console.log("booking", booking);
+    await sendCancellationEmail(booking, booking.userRef.email);
+    
     return res.status(200).json({ message: "Booking cancelled" });
   };
   

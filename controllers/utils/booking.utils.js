@@ -1,11 +1,12 @@
 import nodemailer from "nodemailer";
 import { PDFDocument, rgb } from "pdf-lib";
 import Booking from "../../models/booking.model.js";
+import ExpressError from "../../utils/ExpressError.js";
 
 
 export const generateETickets = async (booking) => {
     const pdfBuffers = [];
-    console.log("ticket price", booking.ticketPrice);
+    // console.log("ticket price", booking.ticketPrice);
   
     for (const seat of booking.seats) {
       const pdfDoc = await PDFDocument.create();
@@ -67,10 +68,8 @@ export const generateETickets = async (booking) => {
     return pdfBuffers;
   };
   
-  export const sendConfirmationEmail = async (pdfBuffers) => {
-    console.log(process.env.EMAIL_USER, process.env.EMAIL_PASSWORD)
+  export const sendConfirmationEmail = async (pdfBuffers, userEmail) => {
     // Create a transporter object using Gmail SMTP
-    const userEmail = "madushaniagd@gmail.com"
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {

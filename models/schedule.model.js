@@ -34,6 +34,10 @@ const scheduleSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    isReturn: {
+        type: Boolean,
+        default: false,
+    },
 });    
 
 const Schedule = mongoose.model("Schedule", scheduleSchema);

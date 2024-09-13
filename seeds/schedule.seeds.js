@@ -55,6 +55,7 @@ const createSchedules = async () => {
         const schedule = {
           trainRef: train._id,
             ...randomSchedule,
+          isReturn: i === 1 ? true : false,  
         };
 
         schedules.push(schedule);

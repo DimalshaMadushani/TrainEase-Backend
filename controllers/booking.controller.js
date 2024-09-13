@@ -2,9 +2,6 @@
 import Stop from "../models/stop.model.js";
 import Booking from "../models/booking.model.js";
 import CoachType from "../models/coachType.model.js";
-import ExpressError from "../utils/ExpressError.js";
-import {PDFDocument,rgb} from "pdf-lib";
-import nodemailer from "nodemailer";
 import { generateETickets,sendConfirmationEmail } from "./utils/booking.utils.js";
 
 
@@ -81,7 +78,7 @@ export const holdSeats = async (req, res, next) => {
       const pdfBuffers = await generateETickets(booking);
   
       // Send email to the user with e-tickets
-      await sendConfirmationEmail(pdfBuffers);
+      await sendConfirmationEmail(pdfBuffers, booking.userRef.email);
   
     return res.status(200).json({ booking });
   };
