@@ -3,6 +3,9 @@ import Booking from "../models/booking.model.js";
 import User from "../models/user.model.js";
 import ExpressError from "../utils/ExpressError.js";
 import mongoose from "mongoose";
+import crypto from "crypto";
+// import { sendEmail } from "./utils/user.utils.js";
+import nodemailer from "nodemailer";
 
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -173,5 +176,99 @@ export const cancelBooking = async (req, res, next) => {
     res.status(200).json(bookings);
   };
   
+//forgot password function
+  export const forgotPassword = async (req, res, next) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordExpire = Date.now() + 3600000; // Token valid for 1 hour
+  await user.save();
+
+   // Send email
+   const transporter = nodemailer.createTransport({
+    service: 'Gmail', // or any other email service
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+  });
+
+  const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+  const mailOptions = {
+    to: user.email,
+    from: 'passwordreset@trainbooking.com',
+    subject: 'Password Reset Request',
+    html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+      <div style="text-align: center; padding-bottom: 20px;">
+        <h2 style="color: #4CAF50;">Railwise - Password Reset</h2>
+      </div>
+      <div style="padding: 20px; background-color: #f9f9f9; border-radius: 10px;">
+        <p style="font-size: 16px; color: #333;">Hello,</p>
+        <p style="font-size: 16px; color: #333;">
+          We received a request to reset your password for your Railwise account. If you did not request this, please ignore this email.
+        </p>
+        <p style="font-size: 16px; color: #333;">
+          To reset your password, please click the button below:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 12px 25px; font-size: 16px; font-weight: bold; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;">Reset Password</a>
+        </div>
+        <p style="font-size: 14px; color: #555;">
+          If the button above doesn’t work, you can copy and paste the following link into your browser:
+        </p>
+        <p style="word-break: break-all; font-size: 14px; color: #4CAF50;">
+          <a href="${resetUrl}" style="color: #4CAF50;">${resetUrl}</a>
+        </p>
+      </div>
+      <div style="padding-top: 20px; text-align: center; border-top: 1px solid #ddd; margin-top: 20px;">
+        <p style="font-size: 12px; color: #999;">
+          If you did not request this password reset, please contact our support team or ignore this email. Your password will remain unchanged.
+        </p>
+        <p style="font-size: 12px; color: #999;">
+          &copy; ${new Date().getFullYear()} Railwise. All rights reserved.
+        </p>
+      </div>
+    </div>
+    `,
+
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      return res.status(500).send('Error sending email');
+    }
+    res.send('Email sent successfully');
+  });
+};
 
  
+//reset password function
+export const resetPassword = async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+  // console.log("req.body", req.body);
+
+  const user = await User.findOne({
+    resetPasswordToken: resetToken,
+    resetPasswordExpire: { $gt: Date.now() },  // Check if token is still valid
+  });
+
+  if (!user) {
+    // console.log("Before Invalid or expired token");
+    return res.status(400).send('Invalid or expired token');
+  }
+
+  // Update password
+  const hashedPassword = await bcryptjs.hash(newPassword, 12);
+  user.password = hashedPassword;
+  user.resetPasswordToken = undefined;  // Remove token
+  user.resetPasswordExpire = undefined; // Remove expiration
+  await user.save();
+
+  res.send('Password has been reset successfully');
+};
