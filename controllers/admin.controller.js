@@ -390,7 +390,7 @@ export const notifyReschedule = async (req, res, next) => {
 
   console.log("emails", emails);
 
-  sendRescheduleEmails(
+  await sendRescheduleEmails(
     new Date(date),
     scheduleName,
     stopName,
@@ -398,6 +398,8 @@ export const notifyReschedule = async (req, res, next) => {
     change,
     emails
   );
+
+  res.status(200).json({ message: "Emails sent successfully" });
 };
 
 export const getStationsOfSchedule = async (req, res, next) => {

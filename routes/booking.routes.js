@@ -5,7 +5,7 @@ import { verifyToken } from "../utils/verifyToken.js";
 const router = express.Router();
 
 router.post("/holdSeats", verifyToken, asyncWrapper(holdSeats));
-router.get("/confirmBooking/:id", verifyToken, asyncWrapper(confirmBooking));
+router.post("/confirmBooking/:id", verifyToken, asyncWrapper(confirmBooking));
 
 
 export default router;

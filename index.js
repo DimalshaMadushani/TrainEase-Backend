@@ -49,3 +49,12 @@ app.use((err, req, res, next) => {
 app.listen(3000, () => {
   console.log("Server listening on port 3000");
 });
+
+
+// // Update this part to listen on your private IP
+// const PORT = 3000;
+// const HOST = "192.168.8.192"; // Replace with your private IP
+
+// app.listen(PORT, HOST, () => {
+//   console.log(`Server listening on http://${HOST}:${PORT}`);
+// });

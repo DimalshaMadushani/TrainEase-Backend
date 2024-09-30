@@ -44,6 +44,7 @@ export const holdSeats = async (req, res, next) => {
   
   export const confirmBooking = async (req, res, next) => {
     const bookingId = req.params.id;
+    console.log("bookingId", bookingId);
     const booking = await Booking.findById(bookingId)
       .populate({
         path: "seats",
