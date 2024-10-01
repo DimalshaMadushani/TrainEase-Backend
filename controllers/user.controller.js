@@ -206,12 +206,12 @@ export const cancelBooking = async (req, res, next) => {
     html: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
       <div style="text-align: center; padding-bottom: 20px;">
-        <h2 style="color: #4CAF50;">Railwise - Password Reset</h2>
+        <h2 style="color: #4CAF50;">TrainEase - Password Reset</h2>
       </div>
       <div style="padding: 20px; background-color: #f9f9f9; border-radius: 10px;">
         <p style="font-size: 16px; color: #333;">Hello,</p>
         <p style="font-size: 16px; color: #333;">
-          We received a request to reset your password for your Railwise account. If you did not request this, please ignore this email.
+          We received a request to reset your password for your TrainEase account. If you did not request this, please ignore this email.
         </p>
         <p style="font-size: 16px; color: #333;">
           To reset your password, please click the button below:
@@ -231,7 +231,7 @@ export const cancelBooking = async (req, res, next) => {
           If you did not request this password reset, please contact our support team or ignore this email. Your password will remain unchanged.
         </p>
         <p style="font-size: 12px; color: #999;">
-          &copy; ${new Date().getFullYear()} Railwise. All rights reserved.
+          &copy; ${new Date().getFullYear()} TrainEase. All rights reserved.
         </p>
       </div>
     </div>

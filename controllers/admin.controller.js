@@ -2,6 +2,7 @@ import Booking from "../models/booking.model.js";
 import Schedule from "../models/schedule.model.js";
 import Train from "../models/train.model.js";
 import Admin from "../models/admin.model.js";
+import User from "../models/user.model.js";
 import Stop from "../models/stop.model.js";
 import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
@@ -240,22 +241,24 @@ export const getBookingsByDateAndSchedule = async (req, res) => {
   }
 };
 
-// Fetch number of users registered grouped by date
 export const getUserRegistrations = async (req, res) => {
-  // console.log("in user registration",req.query)
   const { startDate, endDate } = req.query;
 
+  // Ensure correct time handling for start and end dates
   let start = new Date(startDate);
   let end = new Date(endDate);
-  // start.setHours(0, 0, 0, 0); // Set start time to the beginning of the day
 
-  end.setHours(23, 59, 59, 999); // Set end time to the end of the day
+  // Set the start of the day for the start date
+  start.setHours(0, 0, 0, 0);
+  // Set the end of the day for the end date
+  end.setHours(23, 59, 59, 999);
 
   try {
     // Generate all dates within the range
     const dateRange = generateDateRange(start, end);
-    // console.log("dateRange",dateRange)
-    const registrations = await Admin.aggregate([
+
+    // Query to fetch user registrations
+    const registrations = await User.aggregate([
       {
         $match: {
           createdAt: {
@@ -266,22 +269,26 @@ export const getUserRegistrations = async (req, res) => {
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "Asia/Colombo", // <-- Set your timezone here
+            },
+          },
           count: { $sum: 1 },
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { _id: 1 } }, // Sort by date in ascending order
     ]);
 
-    // console.log("registrations",registrations)
-
-    // Convert the results to an object with dates as keys
+    // Create a map to keep track of registration counts
     const registrationsMap = registrations.reduce((acc, registration) => {
       acc[registration._id] = registration.count;
       return acc;
     }, {});
 
-    // Map over the dateRange to ensure all dates are covered
+    // Generate the result by ensuring all dates are covered, even if count is 0
     const result = dateRange.map((date) => {
       const formattedDate = date.toISOString().split("T")[0]; // Format to YYYY-MM-DD
       return {
@@ -295,6 +302,7 @@ export const getUserRegistrations = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // //profile details fetch
 // export const getProfileDetails = async (req, res) => {
@@ -356,14 +364,15 @@ export const getSchedule = async (req, res, next) => {
 
 export const notifyReschedule = async (req, res, next) => {
   const { date, scheduleId, stopId, isPlatformChange, change } = req.query;
+  
   console.log("query in notifyReschedule", req.query);
   const startDate = new Date(date);
   startDate.setUTCHours(0, 0, 0, 0);
   const endDate = new Date(date);
   endDate.setUTCHours(23, 59, 59, 999);
 
-  console.log("startDate", startDate);
-  console.log("endDate", endDate);
+  // console.log("startDate", startDate);
+  // console.log("endDate", endDate);
 
   const bookings = await Booking.find({
     scheduleRef: scheduleId,
@@ -388,13 +397,11 @@ export const notifyReschedule = async (req, res, next) => {
     schedule.trainRef.name + (schedule.isReturn ? " - Return" : "");
   const stopName = stop.stationRef.name;
 
-  console.log("emails", emails);
-
   await sendRescheduleEmails(
     new Date(date),
     scheduleName,
     stopName,
-    isPlatformChange,
+    isPlatformChange === "true",
     change,
     emails
   );
