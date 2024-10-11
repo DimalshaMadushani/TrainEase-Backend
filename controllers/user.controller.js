@@ -9,6 +9,8 @@ import nodemailer from "nodemailer";
 
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import Stripe from "stripe";
+
 import { sendCancellationEmail } from "./utils/user.utils.js";
 
 
@@ -43,10 +45,20 @@ export const cancelBooking = async (req, res, next) => {
     if (booking.date - Date.now() <= 0) {
       throw new ExpressError("Cannot cancel past bookings", 400);
     }
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const refund = await stripe.refunds.create({
+      payment_intent: booking.paymentId,
+      amount: Math.round(booking.totalAmount * 0.8 * 100), // 80% refund
+    });
+
+    if (refund.status !== "succeeded") {
+      throw new ExpressError("Refund failed", 500);
+    }
+
     booking.status = "cancelled";
     booking.holdExpiry = undefined;
     await booking.save();
-    console.log("booking", booking);
+
     await sendCancellationEmail(booking, booking.userRef.email);
     
     return res.status(200).json({ message: "Booking cancelled" });

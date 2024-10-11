@@ -110,6 +110,7 @@ export const confirmBooking = async (req, res, next) => {
     // If payment was successful, proceed with confirming the booking
     if (paymentIntent.status === "succeeded") {
       // Mark the booking as confirmed
+      booking.paymentId = paymentIntent.id;
       booking.status = "confirmed";
       booking.holdExpiry = undefined;
       await booking.save();

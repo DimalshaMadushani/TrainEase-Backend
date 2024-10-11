@@ -41,6 +41,7 @@ const bookingSchema = new mongoose.Schema({
       ref: "Seat",
     },
   ],
+  paymentId: String,
   holdExpiry: {
     type: Date,
   },
