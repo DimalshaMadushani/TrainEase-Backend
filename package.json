@@ -23,6 +23,7 @@
     "mongoose": "^8.4.4",
     "nodemailer": "^6.9.14",
     "pdf-lib": "^1.17.1",
-    "sanitize-html": "^2.13.0"
+    "sanitize-html": "^2.13.0",
+    "stripe": "^17.2.0"
   }
 }
