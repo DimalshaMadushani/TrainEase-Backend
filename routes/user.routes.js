@@ -1,5 +1,5 @@
 import express from "express";
-import { asyncWrapper } from "../utils/AsyncWrapper.js";
+import { asyncWrapper } from "../utils/asyncWrapper.js";
 import { getBookingHistory , login, register, logout, getProfile, editProfile, cancelBooking,forgotPassword,resetPassword } from "../controllers/user.controller.js";
 import { verifyToken } from "../utils/verifyToken.js";
 import { validateUserRegistration } from "../utils/validationMiddleware.js";

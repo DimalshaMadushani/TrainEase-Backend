@@ -1,5 +1,5 @@
 import express from "express";
-import { asyncWrapper } from "../utils/AsyncWrapper.js";
+import { asyncWrapper } from "../utils/asyncWrapper.js";
 import { getStations, getSchedules, getTrainDetails, getCoachDetails  } from "../controllers/search.controller.js";
 import { verifyToken } from "../utils/verifyToken.js";
 const router = express.Router();
