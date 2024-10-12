@@ -25,7 +25,7 @@ mongoose
 
 app.use(
   cors({
-    origin: "https://trainease-admin-panel.onrender.com", // Allow requests from your frontend
+    origin: ["https://trainease-admin-panel.onrender.com", "https://trainease-frontend-web.onrender.com"],
     credentials: true, // Allow cookies and credentials
   })
 );
