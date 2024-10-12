@@ -336,7 +336,7 @@ export const login = async (req, res, next) => {
     secure: process.env.NODE_ENV === "production", // Enable secure cookies in production
     sameSite: "None", // Allow cookies to be sent cross-domain
     domain: ".onrender.com", // Adjust to match your domain
-  });
+  }).status(200).json(restOfUser);
 };
 
 export const logout = (req, res, next) => {
