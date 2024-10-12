@@ -333,9 +333,8 @@ export const login = async (req, res, next) => {
   const { password: hashed, ...restOfUser } = user._doc;
   res.cookie("access_token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // Enable secure cookies in production
-    sameSite: "None", // Allow cookies to be sent cross-domain
-    domain: ".onrender.com", // Adjust to match your domain
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
   }).status(200).json(restOfUser);
 };
 
