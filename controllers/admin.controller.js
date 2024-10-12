@@ -303,7 +303,6 @@ export const getUserRegistrations = async (req, res) => {
   }
 };
 
-
 // //profile details fetch
 // export const getProfileDetails = async (req, res) => {
 //   const { userId } = req.params;
@@ -332,11 +331,12 @@ export const login = async (req, res, next) => {
   }
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
   const { password: hashed, ...restOfUser } = user._doc;
-  res
-    .cookie("access_token", token, { httpOnly: true })
-    .status(200)
-    .json(restOfUser);
-  // .json({sucess:true,...restOfUser});
+  res.cookie("access_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // Enable secure cookies in production
+    sameSite: "None", // Allow cookies to be sent cross-domain
+    domain: ".onrender.com", // Adjust to match your domain
+  });
 };
 
 export const logout = (req, res, next) => {
@@ -364,7 +364,7 @@ export const getSchedule = async (req, res, next) => {
 
 export const notifyReschedule = async (req, res, next) => {
   const { date, scheduleId, stopId, isPlatformChange, change } = req.query;
-  
+
   console.log("query in notifyReschedule", req.query);
   const startDate = new Date(date);
   startDate.setUTCHours(0, 0, 0, 0);

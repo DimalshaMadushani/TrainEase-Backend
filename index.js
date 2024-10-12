@@ -23,14 +23,20 @@ mongoose
     console.error("Error connecting to MongoDB", err);
   });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://trainease-admin-panel.onrender.com", // Allow requests from your frontend
+    credentials: true, // Allow cookies and credentials
+  })
+);
+
 app.use(cookieParser());
 app.use(express.json());
 
-app.use("/api/user",userRoutes);
-app.use("/api/booking",bookingRoutes);
-app.use("/api/search",searchRoutes);
-app.use("/api/admin",adminRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/booking", bookingRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Periodic task to release expired booking holds
 setInterval(releaseExpiredHolds, 60 * 1000); // Run every minute
@@ -49,7 +55,6 @@ app.use((err, req, res, next) => {
 app.listen(3000, () => {
   console.log("Server listening on port 3000");
 });
-
 
 // // Update this part to listen on your private IP
 // const PORT = 3000;
