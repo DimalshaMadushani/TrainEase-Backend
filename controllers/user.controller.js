@@ -214,7 +214,7 @@ export const forgotPassword = async (req, res, next) => {
     },
   });
 
-  const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+  const resetUrl = `https://trainease-frontend-web.onrender.com/reset-password/${resetToken}`;
   const mailOptions = {
     to: user.email,
     from: "passwordreset@trainbooking.com",
