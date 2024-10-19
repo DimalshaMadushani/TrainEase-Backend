@@ -62,13 +62,16 @@ TrainEase is a web and mobile applications system for managing train bookings an
    STRIPE_SECRET_KEY
    DB_URL
    
+4. Populate the database with initial data.
 
-4. Start the development server
+   ```
+   node ./seeds/seedDB.js
+5. Start the development server
 
     ```
     npm start
     ```
-
+ 
 ## Deployment
 
 We built our backend on [Render](https://render.com/) plaform. You can access the deployed backend at [TrainEase](https://trainease-backend.onrender.com).
