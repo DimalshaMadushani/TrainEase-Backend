@@ -1,52 +1,51 @@
 
 # TrainEase - Train Booking System - Backend
 
-TrainEase is a backend system for managing train bookings and shedules. This backend API provides functionality to search for trains, view schedules, make reservations, and handle user authentication. The system is designed to integrate with both both web and mobile applications. It facilitates seamless operations for users. Additionally, it allow administrators to manage the system effectively. Admins can update train schedules, see charts for bookings, revenue and user registrations along with smooth operations.
+TrainEase is a web and mobile applications system for managing train bookings and shedules. It's backend API provides functionality to search for trains, view schedules, make bookings, and handle user authentication. The system is designed to integrate with both both web and mobile applications. It facilitates seamless operations for users. Additionally, it allow administrators to manage the system effectively. Admins can update train schedules, see charts for bookings, revenue and user registrations along with smooth operations.
 
 ## Features
 
-- **User Authentication:** Provides secure login and registration, along with password recovery via email for easy account access. 
+- **User Authentication:** JWT-based authentication with user roles and permissions.
+
+- **Train Schedule Management:** API to handle train scheduling and availability.
   
 
-- **Ticket Booking:** Allows users to select their starting point, destination, and travel date, displaying available trains for easy selection.
+- **Seat Booking System:** Endpoints for users to book available seats and view selected seats.
   
 
-- **Class and Seat Selection:** Users can choose their preferred travel class (First, Second, Third) and view an interactive seat layout showing available and booked seats.
-  
+- **Admin Panel:** Admin users can manage train schedules, bookings, and user accounts via dedicated routes.
 
-- **Payment Processing:** Offers secure payment processing via Stripe API ensuring users receive e-ticket confirmations via email after successful transactions.
-  
-- **Profile Management:** Enables users to edit and manage their personal profile details for a personalized experience.
-  
+- **Seeding:** Predefined data seeding for testing the database with initial data. 
 
-- **Booking History:** Allows users to access and review past bookings for easy reference and planning.
+## Routes Overview
 
-- **Booking Cancellations:** Provides the option to cancel bookings before the travel date, ensuring flexibility for users.
-
-- **Real-Time Notifications:** Sends timely updates regarding booking confirmations, cancellations, and schedule changes to keep users informed.
-  
-
-- **Logout Option:** Allows users to securely sign out, protecting their personal data and account information.
-  
+- **/api/trains:** Retrieve available trains and schedules.
+- **/api/bookings:** Handle seat reservations and bookings.
+- **/api/users:** User login, registration, and profile management.
+- **/api/admin:** Admin-only routes for managing trains, bookings, and users.
 
 ## Tech Stack
 
   - [Node.js](https://nodejs.org/) - JavaScript runtime built on Chrome's V8 JavaScript engine.
   - [Express](https://expressjs.com/) - A minimal and flexible Node.js web application framework.
+  - [MongoDB](https://www.mongodb.com/) - A NoSQL database for flexible document storage.
+  - [Mongoose](https://mongoosejs.com/) - ODM for MongoDB for defining models and data relationships.
+  - [JWT](https://jwt.io/) - For secure user authentication.
 
 
 ## Prerequisites
 
 - **Node.js:** [Download Node.js](https://nodejs.org/) and install it on your machine.
 - **npm:** Node Package Manager (npm) is included with Node.js.
+- **MongoDB:** Ensure you have MongoDB is installed and running.
 
 ## Installation
 1. Clone the repository
 
     ```bash
-   git clone https://github.com/DimalshaMadushani/TrainEase-Frontend-Web.git
+   git clone https://github.com/DimalshaMadushani/TrainEase-Backend.git
 
-   cd TrainEase-Frontend-Web
+   cd TrainEase-Backend
 2. Install the dependencies
 
     ```bash
@@ -56,26 +55,20 @@ TrainEase is a backend system for managing train bookings and shedules. This bac
 3. Create an .env file to store environment variables
 
     ```bash
-   VITE_HOST="your-ipv4-address"
-   VITE_EMAIL_VALIDATION_API_KEY
-   VITE_STRIPE_PUBLIC_KEY
+   HOST="your-ipv4-address"
+   JWT_SECRET
+   EMAIL_USER
+   EMAIL_PASSWORD
+   STRIPE_SECRET_KEY
+   DB_URL
+   
 
 4. Start the development server
 
     ```
-    npm run dev
+    npm start
     ```
-
-
-
-## Testing
-
-We use Cypress for User Interface testing. You can run tests using
-
-```
-npx cypress open
-```
 
 ## Deployment
 
-We built our web application on [Render](https://render.com/) plaform. You can access the live application at [TrainEase](https://trainease-frontend-web.onrender.com).
+We built our backend on [Render](https://render.com/) plaform. You can access the deployed backend at [TrainEase](https://trainease-backend.onrender.com).
