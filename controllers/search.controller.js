@@ -269,8 +269,8 @@ export const getStations = async (req, res, next) => {
       if (
         !(
           (fromStop.stopNumber < booking.from.stopNumber &&
-            toStop.stopNumber < booking.from.stopNumber) ||
-          (fromStop.stopNumber > booking.to.stopNumber &&
+            toStop.stopNumber <= booking.from.stopNumber) ||
+          (fromStop.stopNumber >= booking.to.stopNumber &&
             toStop.stopNumber > booking.to.stopNumber)
         )
       ) {
